@@ -1,0 +1,3269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武閣修練譜 - 學生作業練功紀錄器</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;600;900&family=Noto+Sans+TC:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Firebase 官方 CDN (相容版，免裝 Node.js 即開即用) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Noto Serif TC', serif, "Microsoft JhengHei";
+      background-color: #f7f3e8;
+      color: #2b2523;
+    }
+    .font-wuxia {
+      font-family: 'Ma Shan Zheng', cursive, 'Noto Serif TC', serif;
+    }
+    .font-kai {
+      font-family: 'DFKai-SB', 'BiauKai', 'Noto Serif TC', serif;
+    }
+    .font-hei {
+      font-family: 'Noto Sans TC', sans-serif, 'Microsoft JhengHei';
+    }
+    .font-yuan {
+      font-family: 'Zen Maru Gothic', 'M PLUS Rounded 1c', 'Yuanti TC', 'YouYuan', '幼圆', sans-serif;
+    }
+    /* 自訂捲軸 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1ebd9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d4c5a9;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #b59f7d;
+    }
+    .border-bamboo {
+      border-color: #d6c7a1;
+    }
+    .bg-parchment {
+      background-color: #fcf9ee;
+    }
+    .bg-parchment-card {
+      background-color: #fffdf5;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#f5efe0] text-[#2c2416]">
+
+  <!-- 頂部宗門橫幅 Header -->
+  <header class="bg-[#3a2212] text-[#f7e8aa] border-b-4 border-[#b48a3c] shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-[#b48a3c] text-[#3a2212] flex items-center justify-center font-wuxia text-2xl font-black shadow-inner">
+          武
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl sm:text-2xl font-bold font-wuxia tracking-wider text-[#fae19c]">武閣修練譜</h1>
+            <!-- 雲端連線狀態徽章 -->
+            <span id="cloud-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-900/60 text-amber-200 border border-amber-500/40">
+              ☁️ 雲端連線中...
+            </span>
+          </div>
+          <p class="text-xs text-[#d1b988] tracking-widest">以勤補拙・功不唐捐・登峰造極</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <div id="admin-badge" class="hidden items-center px-3 py-1 rounded-full text-xs font-bold bg-[#6e1e14] text-[#ffd699] border border-[#d48b3b] shadow-sm">
+          <span>👑 掌門驗印</span>
+          <button id="logout-btn" class="ml-2 underline hover:text-white" title="封印歇息">退席</button>
+        </div>
+        <button id="admin-login-btn" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] transition border border-[#d4a853] shadow">
+          掌門登入
+        </button>
+      </div>
+    </div>
+
+    <!-- 八大專屬五字標籤頁導航列 -->
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto scrollbar-thin space-x-1 sm:space-x-2 text-sm pt-1">
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-daily">
+        📜 今日修煉榜
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-morning">
+        🌅 晨曦點卯閣
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-ranking">
+        🏆 青雲功力榜
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-realms">
+        🥋 修煉境界譜
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-grading">
+        ⚔️ 批閱點卯台
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-students">
+        📜 同門弟子錄
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-subjects">
+        📚 典籍篇章閣
+      </button>
+      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-history">
+        📑 歷練卷宗錄
+      </button>
+    </nav>
+  </header>
+
+  <!-- 主內容容器 Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- 1. 今日修煉榜 -->
+    <section id="tab-daily" class="tab-content space-y-6">
+      <!-- 弟子心法要訣卡片（單排展示，嚴格不換行） -->
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-3.5 sm:p-4 shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3">
+        <div class="shrink-0">
+          <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-[#6e1e14] text-[#ffd699]">弟子心法要訣</span>
+          <h2 class="text-xl sm:text-2xl font-bold font-wuxia text-[#522508] mt-1">以勤補拙，功不唐捐</h2>
+          <p class="text-xs text-stone-600 mt-0.5">「按時修練」穩固基石、「融會貫通」全優破境、「修正招式」破除魔障。每日練功精進，方成陸地神仙！</p>
+        </div>
+        <!-- 四張修為卡片：嚴格單排呈現 (一排4項，絕不分成兩排) -->
+        <div class="flex flex-row items-center gap-1.5 sm:gap-2 text-xs py-1 shrink-0 overflow-x-auto scrollbar-thin max-w-full" style="flex-wrap: nowrap !important;">
+          <div class="bg-amber-100/90 border border-amber-300 rounded-lg p-1.5 sm:p-2 px-2 sm:px-2.5 flex items-center space-x-1.5 shrink-0 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-700 shrink-0"></span>
+            <div>
+              <strong class="text-stone-800">按時修練</strong> <span class="text-emerald-700 font-bold ml-1">+4 修為</span>
+              <span class="text-stone-500 block text-[10px] leading-tight">(準時繳交)</span>
+            </div>
+          </div>
+          <div class="bg-amber-100/90 border border-amber-300 rounded-lg p-1.5 sm:p-2 px-2 sm:px-2.5 flex items-center space-x-1.5 shrink-0 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0"></span>
+            <div>
+              <strong class="text-stone-800">運功稍遲</strong> <span class="text-amber-800 font-bold ml-1">+1 修為</span>
+              <span class="text-stone-500 block text-[10px] leading-tight">(作業遲交)</span>
+            </div>
+          </div>
+          <div class="bg-amber-100/90 border border-amber-300 rounded-lg p-1.5 sm:p-2 px-2 sm:px-2.5 flex items-center space-x-1.5 shrink-0 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-700 shrink-0"></span>
+            <div>
+              <strong class="text-stone-800">融會貫通</strong> <span class="text-rose-700 font-bold ml-1">+4 修為</span>
+              <span class="text-stone-500 block text-[10px] leading-tight">(作業全對)</span>
+            </div>
+          </div>
+          <div class="bg-amber-100/90 border border-amber-300 rounded-lg p-1.5 sm:p-2 px-2 sm:px-2.5 flex items-center space-x-1.5 shrink-0 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-700 shrink-0"></span>
+            <div>
+              <strong class="text-stone-800">修正招式</strong> <span class="text-indigo-700 font-bold ml-1">+2 修為</span>
+              <span class="text-stone-500 block text-[10px] leading-tight">(即時訂正)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 聯絡簿大看板 + 曆法選取雙欄配置 -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- 左側：今日聯絡簿內容看板（占 3 欄） -->
+        <div class="lg:col-span-3 bg-parchment-card border-2 border-[#b89547] rounded-xl p-5 shadow-md flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between pb-3 border-b-2 border-amber-200 gap-3">
+              <div class="flex items-center space-x-3">
+                <span class="w-3 h-7 bg-[#8c4314] rounded-sm inline-block"></span>
+                <h3 class="text-2xl font-bold font-wuxia text-[#421d05] tracking-wide">今日聯絡簿內容</h3>
+                <span id="daily-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">共 0 項</span>
+              </div>
+
+              <!-- 字體與字級調整工具列 -->
+              <div class="flex items-center flex-wrap gap-2 text-xs">
+                <!-- 字體切換 -->
+                <div class="flex items-center bg-amber-50 border border-amber-300 rounded-lg p-1 space-x-1">
+                  <span class="text-stone-500 px-1 font-semibold">字體:</span>
+                  <button class="font-btn px-2 py-0.5 rounded font-bold transition" data-font="kai">標楷體</button>
+                  <button class="font-btn px-2 py-0.5 rounded font-bold transition" data-font="hei">黑體</button>
+                  <button class="font-btn px-2 py-0.5 rounded font-bold transition" data-font="yuan">圓體</button>
+                </div>
+                <!-- 字級切換（適中 30px、大 36px 預設、特大 48px） -->
+                <div class="flex items-center bg-amber-50 border border-amber-300 rounded-lg p-1 space-x-1">
+                  <span class="text-stone-500 px-1 font-semibold">字級:</span>
+                  <button class="size-btn px-2 py-0.5 rounded font-bold transition" data-size="md">適中</button>
+                  <button class="size-btn px-2 py-0.5 rounded font-bold transition" data-size="lg">大 (投影)</button>
+                  <button class="size-btn px-2 py-0.5 rounded font-bold transition" data-size="xl">特大</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 當前顯示日期標記 -->
+            <div class="mt-2 text-xs font-semibold text-stone-600 flex items-center justify-between">
+              <span>📅 曆法良辰：<span id="current-board-date" class="font-bold text-[#8c4314]">載入中...</span></span>
+              <span id="prefill-notice-tag" class="hidden text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[11px] border border-amber-200">💡 預載最新歷史存檔</span>
+            </div>
+
+            <!-- 作業清冊顯示看板容器 -->
+            <div id="daily-board-list" class="mt-4 space-y-2.5 font-kai">
+              <!-- 動態渲染聯絡簿項目 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：修煉時憲曆（占 1 欄） -->
+        <div class="bg-parchment-card border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between pb-2 border-b border-amber-200">
+            <h4 class="font-bold font-wuxia text-[#522508] text-base flex items-center space-x-1">
+              <span>🗓️</span> <span>修煉時憲曆</span>
+            </h4>
+            <div class="flex items-center space-x-1 text-xs">
+              <button id="cal-prev-month" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 font-bold">◀</button>
+              <span id="cal-month-label" class="font-bold text-stone-700 min-w-[70px] text-center">2026年11月</span>
+              <button id="cal-next-month" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 font-bold">▶</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-stone-500 my-2">
+            <span class="text-rose-600">日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="text-emerald-700">六</span>
+          </div>
+          <div id="calendar-days-grid" class="grid grid-cols-7 gap-1 text-center text-xs flex-1">
+            <!-- 動態生成日曆格子 -->
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-amber-200 text-center">
+            <button id="cal-go-today" class="w-full py-1.5 px-3 rounded-lg text-xs font-bold bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] transition shadow">
+              返回今日良辰
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 掌門作業與測驗備品編修台 (管理員專區) -->
+      <div id="admin-daily-edit-box" class="hidden space-y-4">
+        <!-- 作業編修卡 -->
+        <div class="bg-[#fffcf0] border-2 border-dashed border-[#b89547] rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 pb-3">
+            <div>
+              <h4 class="text-lg font-bold font-wuxia text-[#5c2d0c] flex items-center space-x-2">
+                <span>✏️</span> <span>掌門今日作業編修台</span>
+              </h4>
+              <p class="text-xs text-stone-500">（未勾選「顯示」則保留於系統，不推播至前台大電視）</p>
+            </div>
+            <button id="add-daily-task-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
+              + 新增作業
+            </button>
+          </div>
+
+          <div id="task-prefill-banner" class="hidden bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-xs text-amber-900 flex items-center space-x-2">
+            <span>💡</span> <span>此日尚未設定專屬作業，已自動帶入最新一次存檔內容，方便快速編修！</span>
+          </div>
+
+          <div id="daily-tasks-editable-list" class="space-y-2.5">
+            <!-- 作業輸入列 -->
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between pt-3 border-t border-amber-200 gap-3">
+            <button id="convert-to-chapter-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-[#284e3a] text-[#c7ecd3] hover:bg-[#34664c] transition shadow">
+              📥 將今日作業直接轉入修煉篇章 (附加當天日期)
+            </button>
+            <button id="save-daily-tasks-btn" class="px-5 py-2 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] transition shadow-md">
+              💾 儲存並發布今日作業
+            </button>
+          </div>
+        </div>
+
+        <!-- 測驗與攜帶物品編修台 (支援測驗、物品、其他) -->
+        <div class="bg-[#fffcf0] border-2 border-dashed border-[#caa455] rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 pb-3">
+            <div>
+              <h4 class="text-lg font-bold font-wuxia text-[#5c2d0c] flex items-center space-x-2">
+                <span>🎒</span> <span>明日測驗與攜帶物品編修台</span>
+              </h4>
+              <p class="text-xs text-stone-500">（設定明日測驗、攜帶用具或備忘事項，儲存後自動延續編號排列於作業下方）</p>
+            </div>
+            <button id="add-daily-notice-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
+              + 新增測驗/物品
+            </button>
+          </div>
+
+          <div id="daily-notices-editable-list" class="space-y-2.5">
+            <!-- 測驗/物品輸入列 -->
+          </div>
+
+          <div class="flex justify-end pt-3 border-t border-amber-200">
+            <button id="save-daily-notices-btn" class="px-5 py-2 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] transition shadow-md">
+              💾 儲存並發布測驗備忘
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 晨曦點卯閣（課業繳驗錄） -->
+    <section id="tab-morning" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- 點卯大矩陣表格（占 3 欄） -->
+        <div class="lg:col-span-3 bg-parchment-card border-2 border-[#b89547] rounded-xl p-5 shadow-md flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between pb-3 border-b-2 border-amber-200 gap-3">
+              <div class="flex items-center space-x-3">
+                <span class="text-2xl">🌅</span>
+                <h3 class="text-2xl font-bold font-wuxia text-[#421d05] tracking-wide">課業繳驗錄</h3>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">學生即時填報</span>
+              </div>
+              <div class="text-xs font-bold flex items-center space-x-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-300">
+                <span class="text-stone-500">點按切換：</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">1. 準時繳交</span>
+                <span>➔</span>
+                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">2. 運功遲交</span>
+                <span>➔</span>
+                <span class="px-2 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-300">3. 未繳</span>
+              </div>
+            </div>
+
+            <!-- 良辰提示資訊 -->
+            <div class="mt-2 text-xs font-semibold text-stone-600 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span>溯源文牘良辰：<span id="morning-source-date" class="font-bold text-[#8c4314]">--</span></span>
+                <span class="mx-2 text-stone-400">|</span>
+                <span>今日點卯良辰：<span id="morning-active-date" class="font-bold text-[#421d05]">--</span></span>
+                <span class="text-stone-400 text-[11px] ml-1">（已自動排除頁碼說明）</span>
+              </div>
+              <button id="morning-all-submit-btn" class="px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300">
+                ⚡ 全體快速全繳
+              </button>
+            </div>
+
+            <!-- 單頁完整呈現之作業繳驗矩陣 -->
+            <div class="mt-4 overflow-x-auto scrollbar-thin rounded-lg border border-amber-300 shadow-sm bg-white">
+              <table id="morning-check-table" class="w-full text-center text-xs border-collapse">
+                <!-- 動態注入表格 -->
+              </table>
+            </div>
+
+            <!-- 說明與勳章註解（比照增加萬象歸宗介紹，並於結尾統計達成/未達成次數） -->
+            <div class="mt-4 text-xs text-stone-600 space-y-1.5">
+              <p><strong class="text-[#8c4314]">🎖️ 功德圓滿</strong>：代表該位弟子當日所有課業（含聯絡簿）均已如數繳齊！</p>
+              <p><strong class="text-[#962615]">💮 全閣完卷</strong>：代表全班該項作業全體弟子均已繳齊！</p>
+              <p><strong class="text-[#b45309]">🎉 萬象歸宗</strong>：代表全班當日所有課業（含聯絡簿）全體弟子均已全數繳齊！</p>
+              <div class="pt-2 border-t border-amber-200/80 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-stone-700">
+                <span>📊 萬象歸宗統計：</span>
+                <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-lg text-xs font-bold">
+                  達成累計：<span id="wanxiang-achieved-count" class="font-black text-emerald-800 text-sm">0</span> 次
+                </span>
+                <span class="bg-rose-100 text-rose-900 border border-rose-300 px-2.5 py-0.5 rounded-lg text-xs font-bold">
+                  未達成累計：<span id="wanxiang-missed-count" class="font-black text-rose-800 text-sm">0</span> 次
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 管理員專屬「資料同步」按鈕 -->
+          <div id="admin-morning-sync-box" class="hidden mt-6 pt-3 border-t border-amber-200 flex flex-wrap items-center justify-between gap-3">
+            <span class="text-xs text-stone-500">提示：點擊「資料同步」可將當日點卯繳交狀況批次上傳並與批閱點卯台實時連動。</span>
+            <button id="morning-upload-sync-btn" class="px-5 py-2 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] transition shadow-md flex items-center space-x-1.5">
+              <span>📤</span> <span>資料同步</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 點卯時憲曆（占 1 欄） -->
+        <div class="bg-parchment-card border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between pb-2 border-b border-amber-200">
+            <h4 class="font-bold font-wuxia text-[#522508] text-base flex items-center space-x-1">
+              <span>🗓️</span> <span>點卯時憲曆</span>
+            </h4>
+            <div class="flex items-center space-x-1 text-xs">
+              <button id="morning-cal-prev" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 font-bold">◀</button>
+              <span id="morning-cal-month-label" class="font-bold text-stone-700 min-w-[70px] text-center">2026年11月</span>
+              <button id="morning-cal-next" class="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 font-bold">▶</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-stone-500 my-2">
+            <span class="text-rose-600">日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="text-emerald-700">六</span>
+          </div>
+          <div id="morning-calendar-days-grid" class="grid grid-cols-7 gap-1 text-center text-xs flex-1">
+            <!-- 點卯日曆格子 -->
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-amber-200 text-center">
+            <button id="morning-cal-go-today" class="w-full py-1.5 px-3 rounded-lg text-xs font-bold bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] transition shadow">
+              返回今日點卯
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 青雲功力榜 -->
+    <section id="tab-ranking" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+            <span>🏆</span> <span>青雲功力榜・弟子修為總覽</span>
+          </h3>
+          <p class="text-xs text-stone-600 mt-1">即時統計宗門弟子各項作業練功表現，修為達標自動晉升十二重武道仙境！</p>
+        </div>
+        <div class="flex items-center space-x-2 text-xs">
+          <span class="text-stone-500">排序方式：</span>
+          <select id="ranking-sort-sel" class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 font-bold text-stone-800">
+            <option value="exp">依當前修為 (高到低)</option>
+            <option value="number">依座號順序 (小到大)</option>
+            <option value="name">依弟子姓名</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="ranking-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- 動態注入弟子修為卡片 -->
+      </div>
+    </section>
+
+    <!-- 4. 修煉境界譜 -->
+    <section id="tab-realms" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-4 shadow-sm">
+        <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+          <span>🥋</span> <span>通天十二重・武道修煉境界譜</span>
+        </h3>
+        <p class="text-xs text-stone-600 mt-1">凡入武閣者，皆以修為論英雄。依歷練完成先後排定尊座，同日功成者並列青雲！</p>
+      </div>
+
+      <div id="realms-roadmap-container" class="space-y-4">
+        <!-- 動態注入十二重天進階圖譜 -->
+      </div>
+    </section>
+
+    <!-- 5. 批閱點卯台 -->
+    <section id="tab-grading" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 pb-3">
+          <div>
+            <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+              <span>⚔️</span> <span>批閱點卯・修為進階</span>
+            </h3>
+            <p class="text-xs text-stone-600 mt-0.5">登記當日作業狀況，系統即刻發放靈氣修為，助同門進階突破！</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <button id="batch-all-punctual-btn" class="px-3 py-1.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold hover:bg-emerald-200">
+              全體按時修練 (+4)
+            </button>
+            <button id="batch-all-perfect-btn" class="px-3 py-1.5 rounded bg-rose-100 text-rose-800 border border-rose-300 font-bold hover:bg-rose-200">
+              全體融會貫通 (+4)
+            </button>
+            <button id="clear-current-grading-btn" class="px-3 py-1.5 rounded bg-stone-100 text-stone-700 border border-stone-300 font-bold hover:bg-stone-200">
+              清空重置
+            </button>
+          </div>
+        </div>
+
+        <!-- 篇章選取列（左：修煉科目，中：關鍵字查詢，右：修練篇章名稱） -->
+        <div class="bg-amber-50/70 p-3.5 rounded-lg border border-amber-200 text-xs space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block font-bold text-stone-700 mb-1">修煉科目 (典籍)</label>
+              <select id="grading-subject-sel" class="w-full p-2 rounded-lg border border-amber-300 bg-white font-bold text-stone-800">
+                <!-- 動態載入典籍 -->
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-stone-700 mb-1">篇章關鍵字查詢</label>
+              <input type="text" id="grading-chapter-keyword" placeholder="輸入關鍵字縮小清單範圍..." class="w-full p-2 rounded-lg border border-amber-300 bg-white text-stone-800">
+            </div>
+            <div>
+              <label class="block font-bold text-stone-700 mb-1">修練篇章名稱</label>
+              <select id="grading-chapter-sel" class="w-full p-2 rounded-lg border border-amber-300 bg-white font-bold text-stone-800">
+                <!-- 動態載入篇章 -->
+              </select>
+            </div>
+          </div>
+
+          <!-- 新增：日期查詢與當日作業選取列 (點開月曆標註有作業之良辰) -->
+          <div class="pt-3 border-t border-amber-200/80 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="relative">
+              <label class="block font-bold text-stone-700 mb-1">📅 日期查詢</label>
+              <div class="relative flex items-center">
+                <input type="text" id="grading-date-query" readonly placeholder="點擊選取查詢日期..." class="w-full p-2 pr-9 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs">
+                <button type="button" id="grading-calendar-toggle-btn" class="absolute right-2.5 text-stone-500 hover:text-amber-800 text-sm font-bold transition" title="點開月曆查詢">
+                  🗓️
+                </button>
+              </div>
+
+              <!-- 月曆查詢下拉彈窗 (醒目標註有作業之良辰) -->
+              <div id="grading-calendar-popover" class="hidden absolute left-0 top-full mt-1.5 z-40 w-72 sm:w-80 bg-parchment-card border-2 border-[#b89547] rounded-xl p-3 shadow-2xl space-y-2">
+                <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 text-xs">
+                  <div class="flex items-center space-x-1">
+                    <button type="button" id="grading-cal-prev" class="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 font-bold text-stone-800">◀</button>
+                    <span id="grading-cal-month-label" class="font-bold text-stone-800 min-w-[70px] text-center">2026年11月</span>
+                    <button type="button" id="grading-cal-next" class="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 font-bold text-stone-800">▶</button>
+                  </div>
+                  <button type="button" id="grading-cal-today" class="px-2 py-0.5 rounded bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] font-bold text-[11px] shadow-xs">
+                    今日
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-stone-500">
+                  <span class="text-rose-600">日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="text-emerald-700">六</span>
+                </div>
+                <div id="grading-calendar-days-grid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                  <!-- 動態產生月曆格子 -->
+                </div>
+
+                <div class="pt-1.5 border-t border-amber-200 flex items-center justify-between text-[11px] text-stone-600">
+                  <span class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                    <span class="font-bold text-emerald-800">綠點標註：已設作業</span>
+                  </span>
+                  <span class="text-stone-400 text-[10px]">點擊任一日即可載入</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block font-bold text-stone-700 mb-1">📜 當日作業選取 (點選即自動載入該作業之科目與篇章名冊)</label>
+              <select id="grading-date-tasks-sel" class="w-full p-2 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                <!-- 動態載入當日作業 -->
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 批閱點卯學生名冊表格 -->
+        <div class="overflow-x-auto rounded-lg border border-amber-300 shadow-sm bg-white">
+          <table class="w-full text-center text-xs">
+            <thead class="bg-amber-100/90 text-stone-800 font-bold border-b border-amber-300">
+              <tr>
+                <th class="py-2.5 px-3">座號</th>
+                <th class="py-2.5 px-3 text-left">弟子姓名</th>
+                <th class="py-2.5 px-3">當前境界</th>
+                <th class="py-2.5 px-3">篇章完成狀態</th>
+                <th class="py-2.5 px-3 text-emerald-800">按時修練 (+4)</th>
+                <th class="py-2.5 px-3 text-amber-800">運功稍遲 (+1)</th>
+                <th class="py-2.5 px-3 text-rose-800">融會貫通 (+4)</th>
+                <th class="py-2.5 px-3 text-indigo-800">修正招式 (+2)</th>
+                <th class="py-2.5 px-3 font-wuxia text-sm">本回修為</th>
+              </tr>
+            </thead>
+            <tbody id="grading-table-body" class="divide-y divide-amber-100">
+              <!-- 動態生成批閱點卯行 -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button id="save-grading-btn" class="px-6 py-2.5 rounded-lg text-sm font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] transition shadow-md">
+            📜 呈報卷宗・頒發修為
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 同門弟子錄 -->
+    <section id="tab-students" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+            <span>📜</span> <span>同門弟子錄・名冊管理</span>
+          </h3>
+          <p class="text-xs text-stone-600 mt-1">管理座下弟子令號、名諱與初始歷練根基。</p>
+        </div>
+        <button id="add-student-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
+          + 錄入新弟子
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl border border-amber-300 overflow-hidden shadow-sm">
+        <table class="w-full text-center text-xs">
+          <thead class="bg-amber-100 text-stone-800 font-bold border-b border-amber-300">
+            <tr>
+              <th class="py-3 px-4">座號</th>
+              <th class="py-3 px-4 text-left">弟子姓名</th>
+              <th class="py-3 px-4">當前修為 (EXP)</th>
+              <th class="py-3 px-4">當前境界</th>
+              <th class="py-3 px-4">操作管理</th>
+            </tr>
+          </thead>
+          <tbody id="students-table-body" class="divide-y divide-amber-100">
+            <!-- 動態生成弟子行 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. 典籍篇章閣 -->
+    <section id="tab-subjects" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+            <span>📚</span> <span>修煉典籍與篇章配置</span>
+          </h3>
+          <p class="text-xs text-stone-600 mt-1">各典籍可建立專屬修煉篇章，方便日後完整追蹤弟子歷練進度。</p>
+        </div>
+        <button id="add-subject-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
+          + 添創修煉典籍
+        </button>
+      </div>
+
+      <div id="subjects-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- 動態渲染典籍卡片 -->
+      </div>
+    </section>
+
+    <!-- 8. 歷練卷宗錄 -->
+    <section id="tab-history" class="tab-content hidden space-y-6">
+      <div class="bg-parchment border-2 border-[#caa455] rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-2xl font-bold font-wuxia text-[#421d05] flex items-center space-x-2">
+            <span>📑</span> <span>歷練卷宗錄・批閱全紀錄</span>
+          </h3>
+          <p class="text-xs text-stone-600 mt-1">調閱過往歷史批閱、功力晉升與作業繳交明細。</p>
+        </div>
+        <button id="clear-all-history-btn" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300">
+          ⚠️ 謹慎：清空所有卷宗
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl border border-amber-300 overflow-hidden shadow-sm">
+        <table class="w-full text-center text-xs">
+          <thead class="bg-amber-100 text-stone-800 font-bold border-b border-amber-300">
+            <tr>
+              <th class="py-3 px-3">日期</th>
+              <th class="py-3 px-3">典籍科目</th>
+              <th class="py-3 px-4 text-left">修煉篇章</th>
+              <th class="py-3 px-3">弟子姓名</th>
+              <th class="py-3 px-3">各項加成</th>
+              <th class="py-3 px-3 font-wuxia text-sm">獲取修為</th>
+              <th class="py-3 px-3">撤回操作</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body" class="divide-y divide-amber-100">
+            <!-- 動態生成歷史紀錄 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 彈窗 1：觀看與修訂篇章彈窗 (Subject Chapter Modal) -->
+  <div id="subject-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-parchment-card border-3 border-[#caa455] rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+      <!-- 頂部標題列與關閉按鈕 -->
+      <div class="flex items-center justify-between border-b-2 border-amber-200 pb-3">
+        <div class="flex items-center gap-x-6 flex-wrap">
+          <h3 class="text-2xl font-bold font-wuxia text-[#522508]">觀看與修訂篇章</h3>
+          <span id="subject-modal-display-title" class="text-base font-bold text-[#8c4314]">當前修煉典籍：國語</span>
+        </div>
+        <button id="close-subject-modal-btn" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] transition shadow">
+          關閉視窗
+        </button>
+      </div>
+
+      <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+        <!-- 添入新篇章輸入框 -->
+        <div>
+          <label class="block font-bold text-stone-700 text-xs mb-1">添入新篇章</label>
+          <div class="flex space-x-2">
+            <input type="text" id="modal-chapter-new-inp" placeholder="輸入新篇章名稱（例如：國習第一課、數練單元一）..." class="flex-1 p-2 rounded-lg border border-amber-300 bg-white text-xs">
+            <button id="modal-chapter-add-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow shrink-0">
+              + 添入篇章
+            </button>
+          </div>
+        </div>
+
+        <!-- 篇章徽章列表展示 -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-stone-700">修煉篇章列表 (<span id="modal-chapter-count">0</span> 篇)</span>
+            <span class="text-[11px] text-stone-500">點擊 ✏️ 可更名，點擊 × 可刪除</span>
+          </div>
+          <div id="modal-chapter-badge-container" class="min-h-[140px] max-h-[260px] overflow-y-auto p-3 rounded-xl border border-amber-300 bg-amber-50/60 flex flex-wrap gap-2 content-start">
+            <!-- 篇章徽章標籤 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 2：弟子修煉境界突破錄彈窗 (Student Realm Ranking Modal) -->
+  <div id="student-realm-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-parchment-card border-3 border-[#caa455] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[88vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-amber-200 pb-3">
+        <h3 id="student-realm-modal-title" class="text-xl font-bold font-wuxia text-[#522508]">
+          弟子修煉境界突破錄
+        </h3>
+        <button id="close-student-realm-btn" class="text-stone-400 hover:text-stone-700 text-lg font-bold">✕</button>
+      </div>
+
+      <div class="text-xs text-stone-600">
+        當前累計總修為：<span id="student-realm-modal-exp" class="font-bold text-[#8c4314]">0</span> EXP
+      </div>
+
+      <div id="student-realm-history-list" class="space-y-2 flex-1 overflow-y-auto pr-1">
+        <!-- 注入各境界達成時間與排名 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 3：通用高層級確認/輸入彈窗 (最高層 z-[100]，確保絕不被遮擋) -->
+  <div id="confirm-modal" class="fixed inset-0 z-[100] bg-black/65 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-parchment-card border-2 border-[#b89547] rounded-xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+      <h4 id="confirm-modal-title" class="text-lg font-bold font-wuxia text-[#522508]">宗門御令</h4>
+      <p id="confirm-modal-msg" class="text-xs text-stone-700 leading-relaxed">請確認此項操作。</p>
+      
+      <div id="confirm-modal-input-box" class="hidden">
+        <input type="text" id="confirm-modal-input" class="w-full p-2.5 rounded-lg border border-amber-400 text-xs bg-white text-stone-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-amber-200">
+        <button id="confirm-modal-cancel" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-stone-200 hover:bg-stone-300 text-stone-700">
+          取消
+        </button>
+        <button id="confirm-modal-ok" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] shadow">
+          確認
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 4：掌門通關密令專屬驗印彈窗 (密碼以圓點隱藏) -->
+  <div id="admin-login-modal" class="fixed inset-0 z-[100] bg-black/65 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-parchment-card border-3 border-[#caa455] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <!-- 頂部圓形金鎖符印 -->
+      <div class="w-14 h-14 rounded-full bg-[#5c2d0c] border-2 border-[#caa455] text-[#ffd699] flex items-center justify-center mx-auto shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+
+      <!-- 標題與說明文字 -->
+      <div class="text-center">
+        <h3 class="text-2xl font-bold font-wuxia text-[#421d05] tracking-wide">掌門通關密令</h3>
+        <p class="text-xs text-stone-600 mt-1">請以掌門法印開閣，方可行批閱授功與發布文牘之權</p>
+      </div>
+
+      <!-- 密碼輸入框（文字隱藏、置中排列、大圓點間距） -->
+      <div class="py-1">
+        <input type="password" id="admin-pass-input" placeholder="••••••••"
+          class="w-full text-center text-xl font-bold tracking-[0.35em] p-3 rounded-xl border-2 border-[#b89547] bg-[#fffdf6] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8c4314] shadow-inner">
+      </div>
+
+      <!-- 退回與開閣驗印按鈕 -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button id="admin-login-cancel-btn" class="w-full py-2.5 rounded-xl font-bold text-xs bg-stone-200 hover:bg-stone-300 text-stone-700 transition">
+          退回
+        </button>
+        <button id="admin-login-submit-btn" class="w-full py-2.5 rounded-xl font-bold text-xs bg-[#5c2d0c] hover:bg-[#7a3e14] text-[#ffd699] transition shadow-md">
+          開閣驗印
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示容器 -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[110] flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- 主邏輯 JavaScript -->
+  <script>
+    // ==========================================
+    // 0. Firebase 雲端金鑰設定與即時連線 (免 Node.js)
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyCMS1AlFmw973FR6zy0qYA9MuXShYEBBC0",
+      authDomain: "class-homework-c302a.firebaseapp.com",
+      projectId: "class-homework-c302a",
+      storageBucket: "class-homework-c302a.firebasestorage.app",
+      messagingSenderId: "777711487601",
+      appId: "1:777711487601:web:b17c28c5b24c5c986aa9d0",
+      measurementId: "G-R6Z0ZXZ942"
+    };
+
+    let db = null;
+    let cloudDocRef = null;
+    let isCloudReady = false;
+
+    try {
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        cloudDocRef = db.collection('wuge_cultivation').doc('classroom_data');
+      }
+    } catch (err) {
+      console.warn("Firebase 初始化提示:", err);
+    }
+
+    // 更新頂部雲端連線標籤
+    function updateCloudStatus(status, text) {
+      const badge = document.getElementById('cloud-status-badge');
+      if (!badge) return;
+      if (status === 'connected') {
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-900/80 text-emerald-300 border border-emerald-500/50';
+        badge.textContent = text || '☁️ 雲端已連線';
+      } else if (status === 'syncing') {
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-900/80 text-sky-300 border border-sky-500/50 animate-pulse';
+        badge.textContent = text || '☁️ 雲端同步中...';
+      } else if (status === 'error') {
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-900/80 text-rose-300 border border-rose-500/50';
+        badge.textContent = text || '☁️ 本地離線模式';
+      }
+    }
+
+    // ==========================================
+    // 1. 武道境界定名與經驗門檻（十二色高對比色譜）
+    // ==========================================
+    const REALMS = [
+      { level: 1, name: '初入江湖', req: 0, title: '初涉宗門，引氣入體',
+        badgeBg: 'bg-slate-400', badgeText: 'text-white', border: 'border-slate-300', theme: 'text-slate-600' },
+      { level: 2, name: '九品銅皮', req: 50, title: '筋骨初凝，體魄強健',
+        badgeBg: 'bg-amber-600', badgeText: 'text-white', border: 'border-amber-500', theme: 'text-amber-700' },
+      { level: 3, name: '八品鐵骨', req: 120, title: '百鍊成鋼，招式純熟',
+        badgeBg: 'bg-neutral-800', badgeText: 'text-yellow-300 font-black', border: 'border-neutral-600', theme: 'text-neutral-900' },
+      { level: 4, name: '七品貫氣', req: 220, title: '內力灌注，貫通經脈',
+        badgeBg: 'bg-emerald-500', badgeText: 'text-white', border: 'border-emerald-400', theme: 'text-emerald-700' },
+      { level: 5, name: '六品凝氣', req: 340, title: '氣若游龍，神凝不散',
+        badgeBg: 'bg-sky-400', badgeText: 'text-stone-900 font-bold', border: 'border-sky-300', theme: 'text-sky-700' },
+      { level: 6, name: '五品破風', req: 480, title: '掌出生風，威震同門',
+        badgeBg: 'bg-blue-600', badgeText: 'text-white', border: 'border-blue-500', theme: 'text-blue-800' },
+      { level: 7, name: '四品化境', req: 650, title: '心領神會，返璞歸真',
+        badgeBg: 'bg-purple-600', badgeText: 'text-white', border: 'border-purple-400', theme: 'text-purple-800' },
+      { level: 8, name: '三品通玄', req: 900, title: '神遊太虛，妙合天人',
+        badgeBg: 'bg-pink-500', badgeText: 'text-white', border: 'border-pink-400', theme: 'text-pink-700' },
+      { level: 9, name: '二品金剛', req: 1200, title: '金身無暇，萬法不侵',
+        badgeBg: 'bg-orange-500', badgeText: 'text-white', border: 'border-orange-400', theme: 'text-orange-700' },
+      { level: 10, name: '一品指玄', req: 1550, title: '指點江山，氣吞萬里',
+        badgeBg: 'bg-red-600', badgeText: 'text-white', border: 'border-red-500', theme: 'text-red-700' },
+      { level: 11, name: '半步天道', req: 1950, title: '傲視群雄，觸碰天道',
+        badgeBg: 'bg-yellow-400', badgeText: 'text-stone-900 font-black', border: 'border-yellow-400', theme: 'text-yellow-800' },
+      { level: 12, name: '陸地神仙', req: 2400, title: '超凡入聖，一代宗師',
+        badgeBg: 'bg-gradient-to-r from-purple-600 via-rose-500 to-amber-300', badgeText: 'text-white font-black', border: 'border-purple-400', theme: 'text-purple-900' }
+    ];
+
+    // ==========================================
+    // 2. 初始修煉資料庫與典籍配置 (彩虹調色盤)
+    // ==========================================
+    const DEFAULT_STUDENTS = [
+      { id: 's1', number: 1, name: '令狐沖', exp: 6 },
+      { id: 's2', number: 2, name: '黃蓉', exp: 18 },
+      { id: 's3', number: 3, name: '郭靖', exp: 0 },
+      { id: 's4', number: 4, name: '陸雪琪', exp: 10 },
+      { id: 's5', number: 5, name: '張小凡', exp: 0 }
+    ];
+
+    // 依序：國語(紅)、數學(橙)、綜合(黃)、閱讀(綠)、海洋(青)、資訊(靛)、其他(紫)
+    const DEFAULT_SUBJECTS = [
+      { id: 'sub_chi', name: '國語', icon: '📜', chapters: ['國習第一課', '國甲第一課', '國乙第一課', '國習第二課'] },
+      { id: 'sub_mat', name: '數學', icon: '📐', chapters: ['數習第1單元', '數練第1單元', '數學作第2單元'] },
+      { id: 'sub_syn', name: '綜合', icon: '🧭', chapters: ['綜合活動第一單元', '自主探索學習單'] },
+      { id: 'sub_rea', name: '閱讀', icon: '📖', chapters: ['成語故事週記', '晨讀心得短札'] },
+      { id: 'sub_ocn', name: '海洋', icon: '🌊', chapters: ['臺灣海洋生態踏查', '洋流與氣候手冊'] },
+      { id: 'sub_inf', name: '資訊', icon: '💻', chapters: ['打字運指修行', '程式積木第一關'] },
+      { id: 'sub_oth', name: '其他', icon: '🎨', chapters: ['書法字帖練習', '同門生活省思錄'] }
+    ];
+
+    // 輔助函式：取得今日與特定日期字串 YYYY-MM-DD
+    function getTodayDateKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getPreviousDateKey(daysAgo = 1) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // 彩虹漸層科目樣式表
+    const SUBJECT_COLORS = [
+      { name: '國語', bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300' },
+      { name: '數學', bg: 'bg-orange-100', text: 'text-orange-900', border: 'border-orange-300' },
+      { name: '綜合', bg: 'bg-amber-100', text: 'text-amber-900', border: 'border-amber-300' },
+      { name: '閱讀', bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
+      { name: '海洋', bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-300' },
+      { name: '資訊', bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-300' },
+      { name: '其他', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' }
+    ];
+
+    // 取得科目標籤樣式
+    function getSubjectBadgeStyle(subjectName) {
+      const found = SUBJECT_COLORS.find(c => c.name === subjectName);
+      if (found) return found;
+      let hash = 0;
+      for (let i = 0; i < subjectName.length; i++) hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+      const idx = Math.abs(hash) % SUBJECT_COLORS.length;
+      return SUBJECT_COLORS[idx];
+    }
+
+    // 取得備品/測驗標籤樣式 (奶茶色測驗、銀色物品、青綠色其他)
+    function getNoticeBadge(category) {
+      if (category === '測驗') {
+        return {
+          label: '測驗',
+          class: 'bg-[#ede0d4] text-[#6f4e37] border-[#ddb892]'
+        };
+      } else if (category === '物品') {
+        return {
+          label: '物品',
+          class: 'bg-slate-200 text-slate-800 border-slate-300'
+        };
+      } else {
+        return {
+          label: category || '其他',
+          class: 'bg-teal-100 text-teal-800 border-teal-300'
+        };
+      }
+    }
+
+    // ==========================================
+    // 3. 系統核心狀態
+    // ==========================================
+    let isAdmin = false;
+    let selectedDateKey = getTodayDateKey();
+    let morningSelectedDateKey = getTodayDateKey();
+    let calendarYear = new Date().getFullYear();
+    let calendarMonth = new Date().getMonth();
+    let morningCalYear = new Date().getFullYear();
+    let morningCalMonth = new Date().getMonth();
+    let gradingCalYear = new Date().getFullYear();
+    let gradingCalMonth = new Date().getMonth();
+    let activeEditingSubjectId = null;
+
+    let appState = {
+      students: DEFAULT_STUDENTS,
+      subjects: DEFAULT_SUBJECTS,
+      currentFont: 'kai',
+      currentSize: 'lg', // 預設為大 (投影 36px)
+      dailyTasks: [
+        { id: 'dt1', date: getPreviousDateKey(1), subject: '國語', text: '國語習作第 42 至 45 頁並確實訂正', visible: true },
+        { id: 'dt2', date: getPreviousDateKey(1), subject: '數學', text: '數學習作第 38 頁（完成第四單元練習）', visible: true },
+        { id: 'dt3', date: getPreviousDateKey(1), subject: '綜合', text: '完成自主探索學習單第一部分', visible: true },
+        { id: 'dt4', date: getTodayDateKey(), subject: '國語', text: '甲本生字第 5 課書寫完整', visible: true },
+        { id: 'dt5', date: getTodayDateKey(), subject: '數學', text: '數練第 22 頁算式工整', visible: true }
+      ],
+      dailyNotices: [
+        { id: 'dn1', date: getPreviousDateKey(1), category: '測驗', text: '明天考國語第一課聽寫', visible: true },
+        { id: 'dn2', date: getPreviousDateKey(1), category: '物品', text: '攜帶水彩用具及調色盤', visible: true },
+        { id: 'dn3', date: getTodayDateKey(), category: '測驗', text: '明天考數學第 2 單元隨堂卷', visible: true },
+        { id: 'dn4', date: getTodayDateKey(), category: '其他', text: '繳回流感疫苗意願調查表', visible: true }
+      ],
+      morningRecords: {},
+      records: [
+        {
+          id: 'rec_init1',
+          date: getPreviousDateKey(1),
+          timestamp: Date.now() - 86400000,
+          subject: '國語',
+          chapter: '國習第一課',
+          studentId: 's2',
+          studentName: '黃蓉',
+          items: { punctual: true, late: false, perfect: true, corrected: true },
+          expGained: 10
+        },
+        {
+          id: 'rec_init2',
+          date: getPreviousDateKey(1),
+          timestamp: Date.now() - 86400000,
+          subject: '數學',
+          chapter: '數習第1單元',
+          studentId: 's2',
+          studentName: '黃蓉',
+          items: { punctual: true, late: false, perfect: true, corrected: false },
+          expGained: 8
+        },
+        {
+          id: 'rec_init3',
+          date: getPreviousDateKey(1),
+          timestamp: Date.now() - 86400000,
+          subject: '國語',
+          chapter: '國習第一課',
+          studentId: 's4',
+          studentName: '陸雪琪',
+          items: { punctual: true, late: false, perfect: true, corrected: true },
+          expGained: 10
+        },
+        {
+          id: 'rec_init4',
+          date: getPreviousDateKey(1),
+          timestamp: Date.now() - 86400000,
+          subject: '國語',
+          chapter: '國習第一課',
+          studentId: 's1',
+          studentName: '令狐沖',
+          items: { punctual: true, late: false, perfect: false, corrected: true },
+          expGained: 6
+        }
+      ]
+    };
+
+    // 初始化模擬前一日的晨曦點卯紀錄
+    appState.morningRecords[getPreviousDateKey(1)] = {
+      's1': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
+      's2': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
+      's4': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' }
+    };
+
+    // 嘗試從本地 localStorage 讀取暫存
+    try {
+      const localBackup = localStorage.getItem('xiandao_app_state');
+      if (localBackup) {
+        const parsed = JSON.parse(localBackup);
+        if (parsed && parsed.students) {
+          appState = parsed;
+        }
+      }
+    } catch(e) {}
+
+    // 本地與雲端雙軌同步存檔函式
+    function persistState(syncCloud = true) {
+      try {
+        localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
+      } catch (e) {}
+
+      if (syncCloud && cloudDocRef) {
+        updateCloudStatus('syncing');
+        cloudDocRef.set({
+          state: appState,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true })
+        .then(() => {
+          updateCloudStatus('connected');
+        })
+        .catch((err) => {
+          console.warn("雲端寫入提醒:", err);
+          updateCloudStatus('error', '雲端同步受限');
+        });
+      }
+    }
+
+    // 初始化 Firebase 雲端監聽器（實現大螢幕電視與多裝置即時同步）
+    function initFirebaseSync() {
+      if (!cloudDocRef) {
+        updateCloudStatus('error', '未連線雲端');
+        return;
+      }
+
+      cloudDocRef.onSnapshot((doc) => {
+        isCloudReady = true;
+        updateCloudStatus('connected');
+        if (doc.exists) {
+          const cloudData = doc.data();
+          if (cloudData && cloudData.state) {
+            // 將遠端資料寫入本地
+            appState = cloudData.state;
+            try {
+              localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
+            } catch(e) {}
+            // 重新刷新畫面呈現最新進度
+            renderAll();
+          }
+        } else {
+          // 雲端資料庫首次啟動，自動推送預設資料初始化
+          persistState(true);
+        }
+      }, (err) => {
+        console.warn("Firestore 即時監聽失敗，切換為本地離線模式:", err);
+        updateCloudStatus('error', '本地離線模式');
+      });
+    }
+
+    // ==========================================
+    // 4. 輔助運算函式
+    // ==========================================
+    function getStudentRealm(exp) {
+      let current = REALMS[0];
+      let next = REALMS[1];
+      for (let i = 0; i < REALMS.length; i++) {
+        if (exp >= REALMS[i].req) {
+          current = REALMS[i];
+          next = REALMS[i + 1] || null;
+        } else {
+          break;
+        }
+      }
+      return { current, next };
+    }
+
+    // 計算學生在晨曦點卯閣中每日功課（含聯絡簿與作業）均已齊全繳交的總次數
+    function calculateStudentAllDoneCount(studentId) {
+      let count = 0;
+      const allDates = Object.keys(appState.morningRecords || {});
+      allDates.forEach(date => {
+        const hData = getHomeworkDataForDate(date, true);
+        if (hData && hData.tasks && hData.tasks.length > 0) {
+          const items = ['📜 聯絡簿', ...hData.tasks.map(t => simplifyTaskName(t.text))];
+          const stMap = appState.morningRecords[date]?.[studentId] || {};
+          const isAllDone = items.length > 0 && items.every(item => stMap[item] === 'punctual' || stMap[item] === 'late');
+          if (isAllDone) count++;
+        }
+      });
+      return count;
+    }
+
+    // 計算「萬象歸宗」累計達成與未達成次數（限以已設定作業的日期為基準）
+    function calculateWanXiangStats() {
+      const datesWithTasks = Array.from(new Set(
+        (appState.dailyTasks || [])
+          .filter(t => t.text && t.text.trim().length > 0)
+          .map(t => t.date || getTodayDateKey())
+      )).sort();
+
+      let achievedCount = 0;
+      let missedCount = 0;
+
+      if (!appState.students || appState.students.length === 0) {
+        return { achievedCount: 0, missedCount: datesWithTasks.length };
+      }
+
+      datesWithTasks.forEach(dateStr => {
+        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === dateStr && t.text && t.text.trim().length > 0);
+        if (dayTasks.length === 0) return;
+
+        const items = ['📜 聯絡簿', ...dayTasks.map(t => simplifyTaskName(t.text))];
+
+        let dayRecords = appState.morningRecords ? appState.morningRecords[dateStr] : null;
+        if (!dayRecords && appState.morningRecords) {
+          for (const [mDate, recs] of Object.entries(appState.morningRecords)) {
+            const firstStudentRec = Object.values(recs)[0];
+            if (firstStudentRec && dayTasks.some(t => simplifyTaskName(t.text) in firstStudentRec)) {
+              dayRecords = recs;
+              break;
+            }
+          }
+        }
+
+        if (!dayRecords) {
+          missedCount++;
+          return;
+        }
+
+        const isWanXiang = appState.students.every(st => {
+          const stMap = dayRecords[st.id] || {};
+          return items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
+        });
+
+        if (isWanXiang) {
+          achievedCount++;
+        } else {
+          missedCount++;
+        }
+      });
+
+      return { achievedCount, missedCount };
+    }
+
+    // 簡化作業名稱
+    function simplifyTaskName(fullText) {
+      if (!fullText) return '修煉功課';
+      let clean = fullText.trim();
+      clean = clean.replace(/第\s*\d+\s*(至|到|~|-)\s*\d+\s*(頁|課|單元).*/i, '');
+      clean = clean.replace(/第\s*\d+\s*(頁|課|單元).*/i, '');
+      clean = clean.replace(/（.*）|\(.*\)/g, '');
+      clean = clean.replace(/並確實訂正|訂正|抄寫|背誦/g, '');
+      clean = clean.trim();
+      return clean.length >= 2 ? clean : fullText.slice(0, 8);
+    }
+
+    // 回溯尋找前一日有聯絡簿作業的良辰
+    function getPreviousHomeworkData() {
+      const today = morningSelectedDateKey || getTodayDateKey();
+      const allDatesWithTasks = Array.from(new Set(
+        (appState.dailyTasks || [])
+          .filter(t => t.text && t.text.trim().length > 0 && (t.date || getTodayDateKey()) < today)
+          .map(t => t.date || getTodayDateKey())
+      )).sort().reverse();
+
+      if (allDatesWithTasks.length > 0) {
+        const targetDate = allDatesWithTasks[0];
+        return {
+          date: targetDate,
+          tasks: (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text.trim())
+        };
+      }
+      return {
+        date: getPreviousDateKey(1),
+        tasks: (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === getPreviousDateKey(1) && t.visible && t.text.trim())
+      };
+    }
+
+    function getHomeworkDataForDate(targetDate, onlyVisible = true) {
+      let tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate);
+      if (onlyVisible) tasks = tasks.filter(t => t.visible && t.text.trim().length > 0);
+      return { date: targetDate, tasks };
+    }
+
+    // 計算所有境界的突破排行榜
+    function calculateAllRealmRankings() {
+      const studentHistory = {};
+      (appState.students || []).forEach(st => {
+        studentHistory[st.id] = [];
+      });
+
+      const sortedRecords = [...(appState.records || [])].sort((a, b) => a.timestamp - b.timestamp);
+      const studentRunningExp = {};
+      (appState.students || []).forEach(st => { studentRunningExp[st.id] = 0; });
+
+      sortedRecords.forEach(rec => {
+        if (!studentRunningExp[rec.studentId] && studentRunningExp[rec.studentId] !== 0) return;
+        studentRunningExp[rec.studentId] += (rec.expGained || 0);
+        const expNow = studentRunningExp[rec.studentId];
+        const dateStr = rec.date || '2026-10-25';
+
+        REALMS.forEach(realm => {
+          if (realm.req > 0 && expNow >= realm.req) {
+            const already = studentHistory[rec.studentId]?.find(h => h.realmLevel === realm.level);
+            if (!already && studentHistory[rec.studentId]) {
+              studentHistory[rec.studentId].push({
+                realmLevel: realm.level,
+                realmName: realm.name,
+                achievedDate: dateStr,
+                timestamp: rec.timestamp
+              });
+            }
+          }
+        });
+      });
+
+      const realmLeaderboards = {};
+      REALMS.forEach(realm => {
+        if (realm.req === 0) return;
+        const achievers = [];
+        (appState.students || []).forEach(st => {
+          const rec = studentHistory[st.id]?.find(h => h.realmLevel === realm.level);
+          if (rec) {
+            achievers.push({
+              studentId: st.id,
+              studentName: st.name,
+              achievedDate: rec.achievedDate,
+              timestamp: rec.timestamp
+            });
+          }
+        });
+
+        achievers.sort((a, b) => a.achievedDate.localeCompare(b.achievedDate) || a.timestamp - b.timestamp);
+
+        for (let i = 0; i < achievers.length; i++) {
+          if (i > 0 && achievers[i].achievedDate === achievers[i - 1].achievedDate) {
+            achievers[i].rank = achievers[i - 1].rank;
+            achievers[i].isTied = true;
+            achievers[i - 1].isTied = true;
+          } else {
+            achievers[i].rank = i + 1;
+            achievers[i].isTied = false;
+          }
+        }
+        realmLeaderboards[realm.level] = achievers;
+      });
+
+      return { studentHistory, realmLeaderboards };
+    }
+
+    // ==========================================
+    // 5. 渲染各模組視圖
+    // ==========================================
+
+    // 5.1 今日修煉榜
+    function renderDailyHomework() {
+      document.getElementById('current-board-date').textContent = selectedDateKey;
+
+      let tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible);
+      let notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey && n.visible);
+
+      const hasExactData = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === selectedDateKey) ||
+                           (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === selectedDateKey);
+
+      const tagEl = document.getElementById('prefill-notice-tag');
+      if (!hasExactData) {
+        if (tagEl) tagEl.classList.remove('hidden');
+        const allTaskDates = Array.from(new Set((appState.dailyTasks || []).map(t => t.date || getTodayDateKey()))).sort().reverse();
+        if (allTaskDates.length > 0) {
+          tasks = appState.dailyTasks.filter(t => (t.date || getTodayDateKey()) === allTaskDates[0] && t.visible);
+        }
+        const allNoticeDates = Array.from(new Set((appState.dailyNotices || []).map(n => n.date || getTodayDateKey()))).sort().reverse();
+        if (allNoticeDates.length > 0) {
+          notices = appState.dailyNotices.filter(n => (n.date || getTodayDateKey()) === allNoticeDates[0] && n.visible);
+        }
+      } else {
+        if (tagEl) tagEl.classList.add('hidden');
+      }
+
+      const boardList = document.getElementById('daily-board-list');
+      boardList.innerHTML = '';
+
+      boardList.className = 'mt-4 space-y-2.5';
+      if (appState.currentFont === 'kai') boardList.classList.add('font-kai');
+      else if (appState.currentFont === 'hei') boardList.classList.add('font-hei');
+      else if (appState.currentFont === 'yuan') boardList.classList.add('font-yuan');
+
+      let sizeClass = 'text-4xl';
+      let numBadgeClass = 'w-11 h-11 text-2xl';
+      if (appState.currentSize === 'md') {
+        sizeClass = 'text-3xl';
+        numBadgeClass = 'w-9 h-9 text-xl';
+      } else if (appState.currentSize === 'xl') {
+        sizeClass = 'text-5xl';
+        numBadgeClass = 'w-14 h-14 text-3xl';
+      }
+
+      let totalCount = 0;
+
+      tasks.forEach((task) => {
+        totalCount++;
+        const sStyle = getSubjectBadgeStyle(task.subject);
+        const itemEl = document.createElement('div');
+        itemEl.className = 'flex items-center space-x-3.5 py-2 px-3 rounded-xl hover:bg-amber-100/50 transition border border-transparent hover:border-amber-200';
+        itemEl.innerHTML = `
+          <span class="rounded-full bg-[#fae288] text-[#421d05] ${numBadgeClass} flex items-center justify-center font-bold font-wuxia shrink-0 shadow-xs border border-[#f5d77f]">${totalCount}</span>
+          <span class="px-2.5 py-1 rounded text-xs font-bold ${sStyle.bg} ${sStyle.text} border ${sStyle.border} shrink-0">${task.subject}</span>
+          <span class="${sizeClass} text-black font-semibold tracking-wide leading-relaxed break-words flex-1">${task.text}</span>
+        `;
+        boardList.appendChild(itemEl);
+      });
+
+      notices.forEach((notice) => {
+        totalCount++;
+        const badge = getNoticeBadge(notice.category);
+        const itemEl = document.createElement('div');
+        itemEl.className = 'flex items-center space-x-3.5 py-2 px-3 rounded-xl hover:bg-amber-100/50 transition border border-transparent hover:border-amber-200';
+        itemEl.innerHTML = `
+          <span class="rounded-full bg-[#fae288] text-[#421d05] ${numBadgeClass} flex items-center justify-center font-bold font-wuxia shrink-0 shadow-xs border border-[#f5d77f]">${totalCount}</span>
+          <span class="px-2.5 py-1 rounded text-xs font-bold ${badge.class} border shrink-0">${badge.label}</span>
+          <span class="${sizeClass} text-black font-semibold tracking-wide leading-relaxed break-words flex-1">${notice.text}</span>
+        `;
+        boardList.appendChild(itemEl);
+      });
+
+      document.getElementById('daily-count-badge').textContent = `共 ${totalCount} 項`;
+
+      renderAdminEditPanels();
+      updateFontAndSizeButtonsUI();
+    }
+
+    function updateFontAndSizeButtonsUI() {
+      document.querySelectorAll('.font-btn').forEach(btn => {
+        const f = btn.getAttribute('data-font');
+        if (f === appState.currentFont) {
+          btn.className = 'font-btn px-2.5 py-0.5 rounded font-bold transition bg-[#5c2d0c] text-[#f7e8aa] shadow-sm';
+        } else {
+          btn.className = 'font-btn px-2 py-0.5 rounded font-bold transition text-stone-700 hover:bg-amber-200';
+        }
+      });
+
+      document.querySelectorAll('.size-btn').forEach(btn => {
+        const s = btn.getAttribute('data-size');
+        if (s === appState.currentSize) {
+          btn.className = 'size-btn px-2.5 py-0.5 rounded font-bold transition bg-[#5c2d0c] text-[#f7e8aa] shadow-sm';
+        } else {
+          btn.className = 'size-btn px-2 py-0.5 rounded font-bold transition text-stone-700 hover:bg-amber-200';
+        }
+      });
+    }
+
+    function renderAdminEditPanels() {
+      const taskContainer = document.getElementById('daily-tasks-editable-list');
+      taskContainer.innerHTML = '';
+
+      let dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey);
+      let isTaskPrefilled = false;
+      if (dayTasks.length === 0) {
+        const allTaskDates = Array.from(new Set((appState.dailyTasks || []).map(t => t.date || getTodayDateKey()))).sort().reverse();
+        if (allTaskDates.length > 0) {
+          dayTasks = appState.dailyTasks.filter(t => (t.date || getTodayDateKey()) === allTaskDates[0]);
+          isTaskPrefilled = true;
+        }
+      }
+
+      const taskBanner = document.getElementById('task-prefill-banner');
+      if (taskBanner) {
+        if (isTaskPrefilled && dayTasks.length > 0) taskBanner.classList.remove('hidden');
+        else taskBanner.classList.add('hidden');
+      }
+
+      dayTasks.forEach(task => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+        row.setAttribute('data-task-id', task.id);
+        
+        let subOptions = (appState.subjects || []).map(s => 
+          `<option value="${s.name}" ${s.name === task.subject ? 'selected' : ''}>${s.icon || ''} ${s.name}</option>`
+        ).join('');
+
+        row.innerHTML = `
+          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+            <input type="checkbox" class="task-visible-chk rounded text-amber-800" ${task.visible ? 'checked' : ''}>
+            <span>顯示</span>
+          </label>
+          <select class="task-subject-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+            ${subOptions}
+          </select>
+          <input type="text" value="${task.text || ''}" placeholder="輸入作業內容..." class="task-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+          <button class="del-task-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+        `;
+        taskContainer.appendChild(row);
+      });
+
+      const noticeContainer = document.getElementById('daily-notices-editable-list');
+      noticeContainer.innerHTML = '';
+
+      let dayNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey);
+      if (dayNotices.length === 0) {
+        const allNoticeDates = Array.from(new Set((appState.dailyNotices || []).map(n => n.date || getTodayDateKey()))).sort().reverse();
+        if (allNoticeDates.length > 0) {
+          dayNotices = appState.dailyNotices.filter(n => (n.date || getTodayDateKey()) === allNoticeDates[0]);
+        }
+      }
+
+      dayNotices.forEach(notice => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+        row.setAttribute('data-notice-id', notice.id);
+
+        row.innerHTML = `
+          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+            <input type="checkbox" class="notice-visible-chk rounded text-amber-800" ${notice.visible ? 'checked' : ''}>
+            <span>顯示</span>
+          </label>
+          <select class="notice-category-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+            <option value="測驗" ${notice.category === '測驗' ? 'selected' : ''}>測驗</option>
+            <option value="物品" ${notice.category === '物品' ? 'selected' : ''}>物品</option>
+            <option value="其他" ${notice.category === '其他' ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" value="${notice.text || ''}" placeholder="輸入測驗或攜帶用具備忘..." class="notice-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+          <button class="del-notice-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+        `;
+        noticeContainer.appendChild(row);
+      });
+    }
+
+    // 5.2 日曆渲染
+    function renderCalendar() {
+      const monthLabel = document.getElementById('cal-month-label');
+      monthLabel.textContent = `${calendarYear}年${calendarMonth + 1}月`;
+
+      const grid = document.getElementById('calendar-days-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        grid.appendChild(emptyCell);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('button');
+        cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200';
+
+        const hasRecord = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === dStr && t.text.trim()) ||
+                          (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === dStr && n.text.trim());
+
+        if (dStr === selectedDateKey) {
+          cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
+        } else if (dStr === getTodayDateKey()) {
+          cell.classList.add('border', 'border-[#8c4314]', 'text-[#8c4314]', 'font-bold');
+        } else {
+          cell.classList.add('text-stone-700');
+        }
+
+        cell.textContent = d;
+
+        if (hasRecord) {
+          const dot = document.createElement('span');
+          dot.className = `w-1 h-1 rounded-full absolute bottom-0.5 left-1/2 -translate-x-1/2 ${dStr === selectedDateKey ? 'bg-[#ffd699]' : 'bg-emerald-600'}`;
+          cell.appendChild(dot);
+        }
+
+        cell.addEventListener('click', () => {
+          selectedDateKey = dStr;
+          renderDailyHomework();
+          renderCalendar();
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // 5.3 晨曦點卯閣（課業繳驗錄）
+    function renderMorningCheck() {
+      document.getElementById('morning-active-date').textContent = morningSelectedDateKey;
+
+      let hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+      const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
+      if ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) {
+        hData = getPreviousHomeworkData();
+      }
+
+      document.getElementById('morning-source-date').textContent = hData.date || '無前置文牘';
+
+      const items = [
+        '📜 聯絡簿',
+        ...hData.tasks.map(t => simplifyTaskName(t.text))
+      ];
+
+      const table = document.getElementById('morning-check-table');
+      table.innerHTML = '';
+
+      if (!appState.morningRecords) appState.morningRecords = {};
+      if (!appState.morningRecords[morningSelectedDateKey]) {
+        appState.morningRecords[morningSelectedDateKey] = {};
+      }
+      const dayRecords = appState.morningRecords[morningSelectedDateKey];
+
+      const thead = document.createElement('thead');
+      thead.className = 'bg-amber-100 text-stone-900 font-bold border-b border-amber-300';
+      let headerHtml = `<tr><th class="py-2.5 px-3 border-r border-amber-200 min-w-[130px] text-left">作業項目 ＼ 弟子</th>`;
+      (appState.students || []).forEach(st => {
+        headerHtml += `<th class="py-2.5 px-2 border-r border-amber-200 min-w-[70px]">
+          <div>${st.name}</div>
+          <div class="text-[10px] text-stone-500 font-normal">#${st.number}</div>
+        </th>`;
+      });
+      headerHtml += `<th class="py-2.5 px-3 min-w-[90px] bg-amber-200/80 text-amber-950 font-bold">全閣繳齊狀態</th></tr>`;
+      thead.innerHTML = headerHtml;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      tbody.className = 'divide-y divide-amber-100';
+
+      let allItemsAllStudentsCompleted = items.length > 0;
+
+      items.forEach(itemName => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-50/50 transition';
+
+        let rowHtml = `<td class="py-2 px-3 border-r border-amber-200 text-left font-bold text-stone-800 bg-amber-50/30 whitespace-nowrap">${itemName}</td>`;
+        let itemCompletedByAll = true;
+
+        (appState.students || []).forEach(st => {
+          const status = dayRecords[st.id]?.[itemName] || 'none';
+          if (status !== 'punctual' && status !== 'late') {
+            itemCompletedByAll = false;
+            allItemsAllStudentsCompleted = false;
+          }
+
+          let btnClass = 'bg-stone-100 text-stone-500 hover:bg-stone-200 border-stone-200';
+          let btnText = '未繳';
+          if (status === 'punctual') {
+            btnClass = 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-sm';
+            btnText = '✓ 已繳';
+          } else if (status === 'late') {
+            btnClass = 'bg-amber-500 text-stone-950 font-bold border-amber-600 shadow-sm';
+            btnText = '⚡ 遲交';
+          }
+
+          rowHtml += `<td class="py-2 px-1 border-r border-amber-200">
+            <button class="morning-toggle-btn w-full py-1 px-1.5 rounded text-xs border transition ${btnClass}"
+              data-student-id="${st.id}" data-item-name="${itemName}">
+              ${btnText}
+            </button>
+          </td>`;
+        });
+
+        if (itemCompletedByAll) {
+          rowHtml += `<td class="py-2 px-2 font-bold text-[#8a1c0e] bg-rose-50 border-amber-200 animate-pulse">💮 全閣完卷</td>`;
+        } else {
+          rowHtml += `<td class="py-2 px-2 text-stone-400 font-semibold text-[11px]">尚有缺繳</td>`;
+        }
+
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+
+      const footerTr = document.createElement('tr');
+      footerTr.className = 'bg-amber-100/70 font-bold border-t-2 border-amber-300';
+      let footHtml = `<td class="py-2.5 px-3 border-r border-amber-200 text-left text-amber-950 font-bold">弟子繳齊狀態</td>`;
+
+      (appState.students || []).forEach(st => {
+        const stMap = dayRecords[st.id] || {};
+        const isStDone = items.length > 0 && items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
+        if (isStDone) {
+          footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-[#8c4314] bg-amber-200/60 font-bold text-[11px]">🏆 功德圓滿</td>`;
+        } else {
+          footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-stone-400 font-normal text-[11px]">功課未齊</td>`;
+        }
+      });
+
+      if (allItemsAllStudentsCompleted) {
+        footHtml += `<td class="py-2.5 px-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs shadow-inner">🎉 萬象歸宗</td>`;
+      } else {
+        footHtml += `<td class="py-2.5 px-2 text-stone-500 font-bold text-[11px]">催繳中</td>`;
+      }
+
+      footerTr.innerHTML = footHtml;
+      tbody.appendChild(footerTr);
+      table.appendChild(tbody);
+
+      table.querySelectorAll('.morning-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sid = btn.getAttribute('data-student-id');
+          const it = btn.getAttribute('data-item-name');
+          if (!dayRecords[sid]) dayRecords[sid] = {};
+
+          const cur = dayRecords[sid][it] || 'none';
+          if (cur === 'none') dayRecords[sid][it] = 'punctual';
+          else if (cur === 'punctual') dayRecords[sid][it] = 'late';
+          else dayRecords[sid][it] = 'none';
+
+          persistState(true);
+          renderMorningCheck();
+          renderRanking();
+        });
+      });
+
+      renderMorningCalendar();
+
+      const stats = calculateWanXiangStats();
+      const achEl = document.getElementById('wanxiang-achieved-count');
+      const misEl = document.getElementById('wanxiang-missed-count');
+      if (achEl) achEl.textContent = stats.achievedCount;
+      if (misEl) misEl.textContent = stats.missedCount;
+    }
+
+    function renderMorningCalendar() {
+      const monthLabel = document.getElementById('morning-cal-month-label');
+      monthLabel.textContent = `${morningCalYear}年${morningCalMonth + 1}月`;
+
+      const grid = document.getElementById('morning-calendar-days-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(morningCalYear, morningCalMonth, 1).getDay();
+      const daysInMonth = new Date(morningCalYear, morningCalMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        grid.appendChild(emptyCell);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${morningCalYear}-${String(morningCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('button');
+        cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200';
+
+        const hasRecord = appState.morningRecords && appState.morningRecords[dStr] && Object.keys(appState.morningRecords[dStr]).length > 0;
+
+        if (dStr === morningSelectedDateKey) {
+          cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
+        } else if (dStr === getTodayDateKey()) {
+          cell.classList.add('border', 'border-[#8c4314]', 'text-[#8c4314]', 'font-bold');
+        } else {
+          cell.classList.add('text-stone-700');
+        }
+
+        cell.textContent = d;
+
+        if (hasRecord) {
+          const dot = document.createElement('span');
+          dot.className = `w-1 h-1 rounded-full absolute bottom-0.5 left-1/2 -translate-x-1/2 ${dStr === morningSelectedDateKey ? 'bg-[#ffd699]' : 'bg-emerald-600'}`;
+          cell.appendChild(dot);
+        }
+
+        cell.addEventListener('click', () => {
+          morningSelectedDateKey = dStr;
+          renderMorningCheck();
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // 5.4 青雲功力榜
+    function renderRanking() {
+      const container = document.getElementById('ranking-cards-container');
+      container.innerHTML = '';
+
+      const MACARON_GRADIENTS = [
+        'bg-gradient-to-br from-rose-200 via-pink-200 to-rose-300 text-rose-950 border border-rose-300/80 shadow-xs',
+        'bg-gradient-to-br from-orange-200 via-amber-200 to-orange-300 text-orange-950 border border-orange-300/80 shadow-xs',
+        'bg-gradient-to-br from-amber-200 via-yellow-200 to-amber-300 text-amber-950 border border-amber-300/80 shadow-xs',
+        'bg-gradient-to-br from-lime-200 via-emerald-200 to-teal-200 text-emerald-950 border border-emerald-300/80 shadow-xs',
+        'bg-gradient-to-br from-teal-200 via-cyan-200 to-sky-200 text-cyan-950 border border-cyan-300/80 shadow-xs',
+        'bg-gradient-to-br from-sky-200 via-blue-200 to-indigo-200 text-blue-950 border border-blue-300/80 shadow-xs',
+        'bg-gradient-to-br from-indigo-200 via-violet-200 to-purple-200 text-indigo-950 border border-indigo-300/80 shadow-xs',
+        'bg-gradient-to-br from-purple-200 via-fuchsia-200 to-pink-200 text-purple-950 border border-purple-300/80 shadow-xs'
+      ];
+
+      const sortMode = document.getElementById('ranking-sort-sel')?.value || 'exp';
+      let sortedStudents = [...(appState.students || [])];
+
+      if (sortMode === 'exp') {
+        sortedStudents.sort((a, b) => (b.exp || 0) - (a.exp || 0) || a.number - b.number);
+      } else if (sortMode === 'number') {
+        sortedStudents.sort((a, b) => a.number - b.number);
+      } else if (sortMode === 'name') {
+        sortedStudents.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+      }
+
+      sortedStudents.forEach((st, idx) => {
+        const realmInfo = getStudentRealm(st.exp || 0);
+        const card = document.createElement('div');
+        card.className = 'bg-parchment-card border-2 border-amber-300 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition';
+
+        const macaronBadgeStyle = MACARON_GRADIENTS[idx % MACARON_GRADIENTS.length];
+
+        const records = (appState.records || []).filter(r => r.studentId === st.id);
+        const countPunctual = records.filter(r => r.items?.punctual).length;
+        const countLate = records.filter(r => r.items?.late).length;
+        const countPerfect = records.filter(r => r.items?.perfect).length;
+        const countCorrected = records.filter(r => r.items?.corrected).length;
+        const countAllDone = calculateStudentAllDoneCount(st.id);
+
+        const expNext = realmInfo.next ? realmInfo.next.req : realmInfo.current.req;
+        const expPrev = realmInfo.current.req;
+        const progressPct = realmInfo.next ? Math.min(100, Math.round(((st.exp - expPrev) / (expNext - expPrev)) * 100)) : 100;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="w-7 h-7 rounded-full ${macaronBadgeStyle} flex items-center justify-center font-black text-xs font-wuxia">
+                  ${idx + 1}
+                </span>
+                <span class="text-xl font-bold font-wuxia text-stone-900">${st.name}</span>
+                <span class="text-xs text-stone-400 font-bold">#${st.number}</span>
+                <button class="open-student-breakthrough-btn ml-3.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition shadow-xs"
+                  data-student-id="${st.id}">
+                  🏅 突破榜
+                </button>
+              </div>
+              <div class="text-right">
+                <span class="text-2xl font-black font-wuxia text-[#8c4314]">${st.exp || 0}</span>
+                <span class="text-[10px] text-stone-500 block">修為 EXP</span>
+              </div>
+            </div>
+
+            <div class="mt-2.5">
+              <div class="flex justify-between items-center text-xs mb-1">
+                <span class="font-bold text-stone-700 bg-amber-100/90 px-2 py-0.5 rounded border border-amber-200">
+                  第 ${realmInfo.current.level} 重・${realmInfo.current.name}
+                </span>
+                <span class="text-stone-500 text-[11px]">
+                  ${realmInfo.next ? `距「${realmInfo.next.name}」尚欠 ${realmInfo.next.req - (st.exp || 0)} EXP` : '已臻化境'}
+                </span>
+              </div>
+              <div class="w-full bg-stone-200 h-2 rounded-full overflow-hidden shadow-inner">
+                <div class="bg-gradient-to-r from-amber-600 to-[#8c4314] h-full transition-all duration-500" style="width: ${progressPct}%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-5 gap-1.5 text-center mt-4 pt-3 border-t border-amber-200 text-[11px]">
+            <div class="bg-rose-100/80 border border-rose-300 p-1.5 rounded-lg">
+              <span class="block text-rose-800 text-[10px] font-bold">功德圓滿</span>
+              <span class="font-black text-rose-700 text-sm">${countAllDone}</span>
+            </div>
+            <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+              <span class="block text-stone-500 text-[10px]">按時修練</span>
+              <span class="font-bold text-emerald-800 text-sm">${countPunctual}</span>
+            </div>
+            <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+              <span class="block text-stone-500 text-[10px]">運功稍遲</span>
+              <span class="font-bold text-amber-800 text-sm">${countLate}</span>
+            </div>
+            <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+              <span class="block text-stone-500 text-[10px]">融會貫通</span>
+              <span class="font-bold text-rose-700 text-sm">${countPerfect}</span>
+            </div>
+            <div class="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+              <span class="block text-stone-500 text-[10px]">修正招式</span>
+              <span class="font-bold text-indigo-700 text-sm">${countCorrected}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      container.querySelectorAll('.open-student-breakthrough-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sid = btn.getAttribute('data-student-id');
+          openStudentRealmBreakthroughModal(sid);
+        });
+      });
+    }
+
+    // 開啟學生境界突破排名紀錄彈窗
+    function openStudentRealmBreakthroughModal(studentId) {
+      const student = (appState.students || []).find(s => s.id === studentId);
+      if (!student) return;
+
+      const modal = document.getElementById('student-realm-modal');
+      document.getElementById('student-realm-modal-title').textContent = `【${student.name}】修煉境界突破錄`;
+      document.getElementById('student-realm-modal-exp').textContent = student.exp || 0;
+
+      const listContainer = document.getElementById('student-realm-history-list');
+      listContainer.innerHTML = '';
+
+      const { studentHistory, realmLeaderboards } = calculateAllRealmRankings();
+      const myHistories = studentHistory[studentId] || [];
+
+      REALMS.forEach(realm => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl border border-amber-200 bg-amber-50/50 flex items-center justify-between text-xs';
+
+        if (realm.req === 0) {
+          item.innerHTML = `
+            <div class="flex items-center space-x-2.5">
+              <span class="w-6 h-6 rounded-full ${realm.badgeBg} ${realm.badgeText} flex items-center justify-center font-bold text-xs shadow-xs shrink-0">${realm.level}</span>
+              <div>
+                <span class="font-bold text-stone-900 text-sm">${realm.name}</span>
+                <span class="text-stone-500 block text-[11px]">${realm.title}</span>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 font-bold">初始入門</span>
+          `;
+        } else {
+          const reached = myHistories.find(h => h.realmLevel === realm.level);
+          if (reached) {
+            const board = realmLeaderboards[realm.level] || [];
+            const rankEntry = board.find(b => b.studentId === studentId);
+            const rankText = rankEntry ? `第 ${rankEntry.rank} 名${rankEntry.isTied ? ' (同日並列)' : ''}` : '已登榜';
+
+            item.classList.add('bg-amber-100/70', 'border-amber-300');
+            item.innerHTML = `
+              <div class="flex items-center space-x-2.5">
+                <span class="w-6 h-6 rounded-full ${realm.badgeBg} ${realm.badgeText} flex items-center justify-center font-bold text-xs shadow-xs shrink-0">${realm.level}</span>
+                <div>
+                  <span class="font-bold ${realm.theme} text-sm">${realm.name} (${realm.req} EXP)</span>
+                  <span class="text-stone-600 block text-[11px]">突破日期：${reached.achievedDate}</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-[#caa455] text-stone-900 font-bold shadow-xs">
+                ${rankText}
+              </span>
+            `;
+          } else {
+            item.innerHTML = `
+              <div class="flex items-center space-x-2.5">
+                <span class="w-6 h-6 rounded-full ${realm.badgeBg} ${realm.badgeText} flex items-center justify-center font-bold text-xs shadow-xs shrink-0 opacity-60">${realm.level}</span>
+                <div>
+                  <span class="font-bold text-stone-400 text-sm">${realm.name} (${realm.req} EXP)</span>
+                  <span class="text-stone-400 block text-[11px]">尚欠 ${realm.req - (student.exp || 0)} EXP 突破</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-stone-100 text-stone-400 font-semibold">未修至</span>
+            `;
+          }
+        }
+        listContainer.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    // 5.5 修煉境界譜
+    function renderRealmsRoadmap() {
+      const container = document.getElementById('realms-roadmap-container');
+      container.innerHTML = '';
+
+      const { realmLeaderboards } = calculateAllRealmRankings();
+
+      REALMS.forEach(realm => {
+        const achievers = realmLeaderboards[realm.level] || [];
+        const card = document.createElement('div');
+        card.className = `bg-parchment-card border-2 ${realm.border || 'border-amber-300'} rounded-xl p-4 shadow-sm space-y-3`;
+
+        let achieverTagsHtml = '';
+        if (realm.req === 0) {
+          achieverTagsHtml = `<span class="text-stone-500 text-xs">宗門全體弟子均已入門領悟。</span>`;
+        } else if (achievers.length === 0) {
+          achieverTagsHtml = `<span class="text-stone-400 text-xs italic">尚無同門晉升此境，期待諸位苦練功成！</span>`;
+        } else {
+          achievers.forEach(ach => {
+            achieverTagsHtml += `
+              <div class="px-2.5 py-1 rounded-lg bg-amber-100 border border-amber-300 text-xs font-bold text-stone-800 flex items-center space-x-1.5 shadow-2xs">
+                <span class="text-[#8c4314]">第 ${ach.rank} 名${ach.isTied ? '(同日)' : ''}</span>
+                <button class="open-breakthrough-from-realm underline hover:text-[#8c4314]" data-student-id="${ach.studentId}">${ach.studentName}</button>
+                <span class="text-[10px] text-stone-500 font-normal">(${ach.achievedDate})</span>
+              </div>
+            `;
+          });
+        }
+
+        card.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 pb-2">
+            <div class="flex items-center space-x-2">
+              <span class="w-7 h-7 rounded-full ${realm.badgeBg} ${realm.badgeText} flex items-center justify-center font-bold text-xs shadow-md shrink-0">
+                ${realm.level}
+              </span>
+              <h4 class="text-lg font-bold font-wuxia ${realm.theme}">${realm.name}</h4>
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                門檻：${realm.req} EXP
+              </span>
+            </div>
+            <span class="text-xs text-stone-500">${realm.title}</span>
+          </div>
+
+          <div>
+            <div class="text-xs font-bold text-stone-700 mb-1.5 flex items-center space-x-1">
+              <span>🏅 登榜先後錄 (依達標順位，同日達成列為相同排名)：</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              ${achieverTagsHtml}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      container.querySelectorAll('.open-breakthrough-from-realm').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sid = btn.getAttribute('data-student-id');
+          openStudentRealmBreakthroughModal(sid);
+        });
+      });
+    }
+
+    // 5.6 批閱點卯台
+    function renderGradingView() {
+      const subSel = document.getElementById('grading-subject-sel');
+      subSel.innerHTML = (appState.subjects || []).map(s => `<option value="${s.name}">${s.icon || ''} ${s.name}</option>`).join('');
+
+      const dateInp = document.getElementById('grading-date-query');
+      if (dateInp && !dateInp.value) {
+        dateInp.value = selectedDateKey || getTodayDateKey();
+      }
+
+      updateGradingChaptersList();
+      updateGradingDateTasks();
+      renderGradingCalendar();
+      renderGradingTable();
+    }
+
+    function renderGradingCalendar() {
+      const monthLabel = document.getElementById('grading-cal-month-label');
+      if (monthLabel) monthLabel.textContent = `${gradingCalYear}年${gradingCalMonth + 1}月`;
+
+      const grid = document.getElementById('grading-calendar-days-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const firstDay = new Date(gradingCalYear, gradingCalMonth, 1).getDay();
+      const daysInMonth = new Date(gradingCalYear, gradingCalMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        grid.appendChild(emptyCell);
+      }
+
+      const activeDate = document.getElementById('grading-date-query')?.value || selectedDateKey;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${gradingCalYear}-${String(gradingCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200 flex flex-col items-center justify-center';
+
+        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === dStr && t.text && t.text.trim());
+        const hasTasks = dayTasks.length > 0;
+
+        if (dStr === activeDate) {
+          cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
+        } else if (hasTasks) {
+          cell.classList.add('bg-emerald-50', 'border', 'border-emerald-400', 'text-emerald-950', 'font-bold');
+        } else if (dStr === getTodayDateKey()) {
+          cell.classList.add('border', 'border-[#8c4314]', 'text-[#8c4314]', 'font-bold');
+        } else {
+          cell.classList.add('text-stone-700');
+        }
+
+        cell.textContent = d;
+
+        if (hasTasks) {
+          const dot = document.createElement('span');
+          dot.className = `w-1.5 h-1.5 rounded-full absolute bottom-0.5 left-1/2 -translate-x-1/2 ${dStr === activeDate ? 'bg-[#ffd699]' : 'bg-emerald-600'}`;
+          cell.appendChild(dot);
+        }
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const qInput = document.getElementById('grading-date-query');
+          if (qInput) qInput.value = dStr;
+          document.getElementById('grading-calendar-popover')?.classList.add('hidden');
+          updateGradingDateTasks();
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function updateGradingDateTasks() {
+      const dateInp = document.getElementById('grading-date-query');
+      const targetDate = dateInp ? dateInp.value : (selectedDateKey || getTodayDateKey());
+      const tasksSel = document.getElementById('grading-date-tasks-sel');
+      if (!tasksSel) return;
+
+      const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.text && t.text.trim().length > 0);
+
+      if (dayTasks.length === 0) {
+        tasksSel.innerHTML = '<option value="">(此日期尚無作業設定)</option>';
+      } else {
+        let opts = '<option value="">-- 請選取當日作業 (共 ' + dayTasks.length + ' 項) --</option>';
+        dayTasks.forEach(task => {
+          opts += `<option value="${task.id}" data-subject="${task.subject}" data-text="${task.text.replace(/"/g, '&quot;')}">【${task.subject}】${task.text}</option>`;
+        });
+        tasksSel.innerHTML = opts;
+      }
+    }
+
+    function updateGradingChaptersList() {
+      const currentSub = document.getElementById('grading-subject-sel').value;
+      const sub = (appState.subjects || []).find(s => s.name === currentSub);
+      const keyword = (document.getElementById('grading-chapter-keyword')?.value || '').trim().toLowerCase();
+
+      let chapters = sub ? sub.chapters || [] : [];
+      if (keyword) {
+        chapters = chapters.filter(c => c.toLowerCase().includes(keyword));
+      }
+
+      const chapSel = document.getElementById('grading-chapter-sel');
+      if (chapters.length === 0) {
+        chapSel.innerHTML = '<option value="">(無符合關鍵字篇章)</option>';
+      } else {
+        chapSel.innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+    }
+
+    function renderGradingTable() {
+      const currentSub = document.getElementById('grading-subject-sel').value;
+      const currentChap = document.getElementById('grading-chapter-sel').value;
+      const tbody = document.getElementById('grading-table-body');
+      tbody.innerHTML = '';
+
+      (appState.students || []).forEach(st => {
+        const realmInfo = getStudentRealm(st.exp || 0);
+        const existingRec = (appState.records || []).find(r => r.studentId === st.id && r.subject === currentSub && r.chapter === currentChap);
+
+        const isPunctual = existingRec ? (existingRec.items?.punctual ?? false) : false;
+        const isLate = existingRec ? (existingRec.items?.late ?? false) : false;
+        const isPerfect = existingRec ? (existingRec.items?.perfect ?? false) : false;
+        const isCorrected = existingRec ? (existingRec.items?.corrected ?? false) : false;
+
+        let statusText = '尚未點卯';
+        let statusClass = 'text-stone-400 bg-stone-100';
+        if (existingRec) {
+          statusText = `已完成 (+${existingRec.expGained} EXP)`;
+          statusClass = 'text-emerald-800 bg-emerald-100 border border-emerald-300';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-50/50 transition';
+        tr.setAttribute('data-student-id', st.id);
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-stone-600">#${st.number}</td>
+          <td class="py-2.5 px-3 text-left font-bold text-stone-900">${st.name}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-stone-800">
+              ${realmInfo.current.name}
+            </span>
+          </td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold ${statusClass}">
+              ${statusText}
+            </span>
+          </td>
+          <td class="py-2.5 px-3">
+            <input type="checkbox" class="grade-punctual-chk rounded text-emerald-700" ${isPunctual ? 'checked' : ''}>
+          </td>
+          <td class="py-2.5 px-3">
+            <input type="checkbox" class="grade-late-chk rounded text-amber-600" ${isLate ? 'checked' : ''}>
+          </td>
+          <td class="py-2.5 px-3">
+            <input type="checkbox" class="grade-perfect-chk rounded text-rose-700" ${isPerfect ? 'checked' : ''}>
+          </td>
+          <td class="py-2.5 px-3">
+            <input type="checkbox" class="grade-corrected-chk rounded text-indigo-700" ${isCorrected ? 'checked' : ''}>
+          </td>
+          <td class="py-2.5 px-3 font-bold text-[#8c4314] grade-row-exp text-sm">
+            +0 EXP
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        const pChk = tr.querySelector('.grade-punctual-chk');
+        const lChk = tr.querySelector('.grade-late-chk');
+        const fChk = tr.querySelector('.grade-perfect-chk');
+        const cChk = tr.querySelector('.grade-corrected-chk');
+        const expLabel = tr.querySelector('.grade-row-exp');
+
+        function updateExp() {
+          let exp = 0;
+          if (pChk.checked) exp += 4;
+          if (lChk.checked) exp += 1;
+          if (fChk.checked) exp += 4;
+          if (cChk.checked) exp += 2;
+          expLabel.textContent = `+${exp} EXP`;
+        }
+
+        pChk.addEventListener('change', () => {
+          if (pChk.checked) lChk.checked = false;
+          updateExp();
+        });
+        lChk.addEventListener('change', () => {
+          if (lChk.checked) pChk.checked = false;
+          updateExp();
+        });
+        fChk.addEventListener('change', () => {
+          if (fChk.checked) {
+            cChk.checked = true;
+          }
+          updateExp();
+        });
+        cChk.addEventListener('change', updateExp);
+
+        updateExp();
+      });
+    }
+
+    // 5.7 同門弟子錄
+    function renderStudentsView() {
+      const tbody = document.getElementById('students-table-body');
+      tbody.innerHTML = '';
+
+      (appState.students || []).sort((a, b) => a.number - b.number).forEach(st => {
+        const realmInfo = getStudentRealm(st.exp || 0);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-50/50 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-stone-700">#${st.number}</td>
+          <td class="py-3 px-4 text-left font-bold text-stone-900">${st.name}</td>
+          <td class="py-3 px-4 font-black text-[#8c4314]">${st.exp || 0}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-stone-800">
+              第 ${realmInfo.current.level} 重・${realmInfo.current.name}
+            </span>
+          </td>
+          <td class="py-3 px-4 space-x-2">
+            <button class="edit-student-btn text-xs font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-900 hover:bg-amber-200" data-id="${st.id}">修訂</button>
+            <button class="del-student-btn text-xs font-bold px-2.5 py-1 rounded bg-rose-100 text-rose-800 hover:bg-rose-200" data-id="${st.id}">除名</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('.edit-student-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const sid = btn.getAttribute('data-id');
+            const st = appState.students.find(s => s.id === sid);
+            if (!st) return;
+            showPromptModal(`修訂【${st.name}】姓名`, st.name, (newName) => {
+              if (newName && newName.trim()) {
+                st.name = newName.trim();
+                persistState(true);
+                renderAll();
+                showToast(`弟子名稱已修訂為 ${st.name}`);
+              }
+            });
+          });
+        });
+      });
+
+      tbody.querySelectorAll('.del-student-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const sid = btn.getAttribute('data-id');
+            const st = appState.students.find(s => s.id === sid);
+            if (!st) return;
+            showConfirmModal(`確定將【${st.name}】除名？`, '除名後相關修為與歷練卷宗將一併移除。', () => {
+              appState.students = appState.students.filter(s => s.id !== sid);
+              appState.records = appState.records.filter(r => r.studentId !== sid);
+              persistState(true);
+              renderAll();
+              showToast(`弟子【${st.name}】已移出名冊`);
+            });
+          });
+        });
+      });
+    }
+
+    // 5.8 典籍篇章閣
+    function renderSubjectsView() {
+      const container = document.getElementById('subjects-cards-container');
+      container.innerHTML = '';
+
+      (appState.subjects || []).forEach(sub => {
+        const card = document.createElement('div');
+        card.className = 'bg-parchment-card border-2 border-amber-300 rounded-xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="text-3xl">${sub.icon || '📚'}</span>
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <h4 class="text-xl font-bold font-wuxia text-[#522508]">${sub.name}</h4>
+                    <button class="rename-subject-btn text-stone-400 hover:text-amber-800 text-sm font-bold" data-id="${sub.id}" title="更名典籍">✏️</button>
+                  </div>
+                  <span class="text-[11px] text-stone-500">典籍代碼: ${sub.id}</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                ${(sub.chapters || []).length} 篇章
+              </span>
+            </div>
+
+            <p class="text-xs text-stone-600 mt-4 leading-relaxed">
+              包含所屬課本、習作等歷練章節，點擊下方「觀看與修訂篇章」即可查看詳細篇章標籤、添創新章節或更替篇章名稱。
+            </p>
+          </div>
+
+          <div class="mt-5 pt-3 border-t border-amber-200 flex justify-end space-x-3 text-xs font-bold">
+            <button class="open-chapter-modal-btn text-[#8c4314] hover:underline" data-id="${sub.id}">
+              觀看與修訂篇章
+            </button>
+            <button class="del-subject-btn text-rose-700 hover:underline" data-id="${sub.id}">
+              銷毀
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      container.querySelectorAll('.rename-subject-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const subId = btn.getAttribute('data-id');
+            const sub = appState.subjects.find(s => s.id === subId);
+            if (!sub) return;
+            showPromptModal(`更名【${sub.name}】典籍`, sub.name, (newName) => {
+              if (newName && newName.trim() && newName.trim() !== sub.name) {
+                const oldName = sub.name;
+                sub.name = newName.trim();
+                appState.records.forEach(r => { if (r.subject === oldName) r.subject = sub.name; });
+                appState.dailyTasks.forEach(t => { if (t.subject === oldName) t.subject = sub.name; });
+                persistState(true);
+                renderAll();
+                showToast(`修煉典籍已更名為「${sub.name}」`);
+              }
+            });
+          });
+        });
+      });
+
+      container.querySelectorAll('.open-chapter-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const subId = btn.getAttribute('data-id');
+          openSubjectModal(subId);
+        });
+      });
+
+      container.querySelectorAll('.del-subject-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const subId = btn.getAttribute('data-id');
+            const sub = appState.subjects.find(s => s.id === subId);
+            if (!sub) return;
+            showConfirmModal(`確定銷毀【${sub.name}】典籍？`, '銷毀後該典籍的所有篇章將一併移除。', () => {
+              appState.subjects = appState.subjects.filter(s => s.id !== subId);
+              persistState(true);
+              renderAll();
+              showToast(`典籍【${sub.name}】已銷毀`);
+            });
+          });
+        });
+      });
+    }
+
+    function openSubjectModal(subjectId) {
+      activeEditingSubjectId = subjectId;
+      const sub = (appState.subjects || []).find(s => s.id === subjectId);
+      if (!sub) return;
+
+      document.getElementById('subject-modal-display-title').textContent = `當前修煉典籍：${sub.name}`;
+      document.getElementById('modal-chapter-new-inp').value = '';
+      renderModalChapterBadges(sub);
+
+      document.getElementById('subject-modal').classList.remove('hidden');
+    }
+
+    function renderModalChapterBadges(sub) {
+      const container = document.getElementById('modal-chapter-badge-container');
+      container.innerHTML = '';
+      const chapters = sub.chapters || [];
+      document.getElementById('modal-chapter-count').textContent = chapters.length;
+
+      if (chapters.length === 0) {
+        container.innerHTML = `<span class="text-stone-400 text-xs italic">暫無任何修煉篇章，請由上方添入。</span>`;
+        return;
+      }
+
+      chapters.forEach((chap, idx) => {
+        const badge = document.createElement('div');
+        badge.className = 'px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-xs font-bold text-stone-800 flex items-center space-x-2 shadow-2xs hover:bg-amber-200/80 transition';
+        badge.innerHTML = `
+          <span>${chap}</span>
+          <button class="del-chapter-btn text-stone-400 hover:text-rose-700 font-bold ml-1" title="刪除此篇章" data-idx="${idx}">×</button>
+          <button class="rename-chapter-btn text-stone-400 hover:text-amber-800 font-bold ml-1" title="更名此篇章" data-idx="${idx}">✏️</button>
+        `;
+        container.appendChild(badge);
+      });
+
+      container.querySelectorAll('.del-chapter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            const chapName = sub.chapters[idx];
+            showConfirmModal(`確定刪除篇章【${chapName}】？`, '刪除後相關歷練紀錄與所得修為將自動扣除。', () => {
+              sub.chapters.splice(idx, 1);
+              const removedRecs = (appState.records || []).filter(r => r.subject === sub.name && r.chapter === chapName);
+              removedRecs.forEach(rec => {
+                const st = (appState.students || []).find(s => s.id === rec.studentId);
+                if (st) st.exp = Math.max(0, (st.exp || 0) - (rec.expGained || 0));
+              });
+              appState.records = (appState.records || []).filter(r => !(r.subject === sub.name && r.chapter === chapName));
+              persistState(true);
+              renderModalChapterBadges(sub);
+              renderAll();
+              showToast(`篇章【${chapName}】已刪除`);
+            });
+          });
+        });
+      });
+
+      container.querySelectorAll('.rename-chapter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            const oldName = sub.chapters[idx];
+            showPromptModal(`更名修煉篇章`, oldName, (newName) => {
+              if (newName && newName.trim() && newName.trim() !== oldName) {
+                const freshName = newName.trim();
+                sub.chapters[idx] = freshName;
+                (appState.records || []).forEach(r => {
+                  if (r.subject === sub.name && r.chapter === oldName) {
+                    r.chapter = freshName;
+                  }
+                });
+                persistState(true);
+                renderModalChapterBadges(sub);
+                renderAll();
+                showToast(`篇章已更名為「${freshName}」`);
+              }
+            });
+          });
+        });
+      });
+    }
+
+    // 5.9 歷練卷宗錄
+    function renderHistoryView() {
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = '';
+
+      if (!appState.records || appState.records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-stone-400 italic">暫無歷史批閱卷宗紀錄。</td></tr>`;
+        return;
+      }
+
+      const sorted = [...appState.records].sort((a, b) => b.timestamp - a.timestamp);
+
+      sorted.forEach(rec => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-50/50 transition';
+
+        let bonuses = [];
+        if (rec.items?.punctual) bonuses.push('準時+4');
+        if (rec.items?.late) bonuses.push('遲交+1');
+        if (rec.items?.perfect) bonuses.push('全對+4');
+        if (rec.items?.corrected) bonuses.push('訂正+2');
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-semibold text-stone-600">${rec.date || '--'}</td>
+          <td class="py-2.5 px-3 font-bold text-stone-800">${rec.subject}</td>
+          <td class="py-2.5 px-4 text-left font-semibold text-stone-900">${rec.chapter}</td>
+          <td class="py-2.5 px-3 font-bold text-[#522508]">${rec.studentName}</td>
+          <td class="py-2.5 px-3 text-[11px] text-stone-600">${bonuses.join('、') || '無加成'}</td>
+          <td class="py-2.5 px-3 font-black text-[#8c4314] text-sm">+${rec.expGained || 0}</td>
+          <td class="py-2.5 px-3">
+            <button class="revoke-rec-btn text-stone-400 hover:text-rose-700 font-bold" data-id="${rec.id}">撤銷</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('.revoke-rec-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const recId = btn.getAttribute('data-id');
+            const rec = appState.records.find(r => r.id === recId);
+            if (!rec) return;
+            showConfirmModal('確定撤銷此項卷宗？', `將自【${rec.studentName}】扣除 ${rec.expGained} EXP。`, () => {
+              const st = (appState.students || []).find(s => s.id === rec.studentId);
+              if (st) st.exp = Math.max(0, (st.exp || 0) - (rec.expGained || 0));
+              appState.records = appState.records.filter(r => r.id !== recId);
+              persistState(true);
+              renderAll();
+              showToast('卷宗已成功撤銷');
+            });
+          });
+        });
+      });
+    }
+
+    // 全站總渲染
+    function renderAll() {
+      renderDailyHomework();
+      renderCalendar();
+      renderMorningCheck();
+      renderRanking();
+      renderRealmsRoadmap();
+      renderGradingView();
+      renderStudentsView();
+      renderSubjectsView();
+      renderHistoryView();
+    }
+
+    // ==========================================
+    // 6. 通用彈窗與提示訊息 (Custom Modal & Toast)
+    // ==========================================
+    let confirmModalCallback = null;
+
+    function showConfirmModal(title, msg, onOk) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-msg').textContent = msg;
+      document.getElementById('confirm-modal-input-box').classList.add('hidden');
+      confirmModalCallback = onOk;
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function showPromptModal(title, defaultValue, onOk) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-msg').textContent = '請輸入新名稱並確認：';
+      const inputBox = document.getElementById('confirm-modal-input-box');
+      const input = document.getElementById('confirm-modal-input');
+      inputBox.classList.remove('hidden');
+      input.value = defaultValue || '';
+      confirmModalCallback = () => {
+        onOk(input.value);
+      };
+      document.getElementById('confirm-modal').classList.remove('hidden');
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 60);
+    }
+
+    document.getElementById('confirm-modal-ok').addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.add('hidden');
+      if (confirmModalCallback) {
+        confirmModalCallback();
+        confirmModalCallback = null;
+      }
+    });
+
+    document.getElementById('confirm-modal-cancel').addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.add('hidden');
+      confirmModalCallback = null;
+    });
+
+    document.getElementById('confirm-modal-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('confirm-modal-ok').click();
+      }
+    });
+
+    function showToast(msg) {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = 'px-4 py-2.5 rounded-xl bg-[#3a2212] text-[#f7e8aa] border border-[#b48a3c] shadow-xl text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0';
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => {
+        t.classList.remove('translate-y-2', 'opacity-0');
+      }, 20);
+      setTimeout(() => {
+        t.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => t.remove(), 300);
+      }, 2800);
+    }
+
+    // 掌門通關密令專屬驗印邏輯 (密碼設定為 Rccbok6869)
+    const MASTER_PASSWORD = 'Rccbok6869';
+    let adminLoginCallback = null;
+
+    function openAdminLoginModal(callback) {
+      adminLoginCallback = callback;
+      const modal = document.getElementById('admin-login-modal');
+      const input = document.getElementById('admin-pass-input');
+      input.value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        input.focus();
+      }, 60);
+    }
+
+    function checkAdminAction(action) {
+      if (isAdmin) {
+        action();
+      } else {
+        openAdminLoginModal(action);
+      }
+    }
+
+    function updateAdminUI() {
+      const badge = document.getElementById('admin-badge');
+      const loginBtn = document.getElementById('admin-login-btn');
+      const editBox = document.getElementById('admin-daily-edit-box');
+      const syncBox = document.getElementById('admin-morning-sync-box');
+
+      if (isAdmin) {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        loginBtn.classList.add('hidden');
+        editBox.classList.remove('hidden');
+        syncBox.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+        loginBtn.classList.remove('hidden');
+        editBox.classList.add('hidden');
+        syncBox.classList.add('hidden');
+      }
+    }
+
+    // ==========================================
+    // 7. 事件監聽器綁定
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // 啟動 Firebase 雲端監聽器
+      initFirebaseSync();
+
+      // 導航切換
+      const tabs = document.querySelectorAll('.nav-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-tab');
+          tabs.forEach(t => {
+            t.classList.remove('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'border-b-transparent', 'border-[#b48a3c]');
+            t.classList.add('text-[#e6cb97]', 'border-transparent');
+          });
+          tab.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'border-b-transparent', 'border-[#b48a3c]');
+          tab.classList.remove('text-[#e6cb97]', 'border-transparent');
+
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+          document.getElementById(target)?.classList.remove('hidden');
+
+          if (target === 'tab-morning') renderMorningCheck();
+          if (target === 'tab-ranking') renderRanking();
+          if (target === 'tab-realms') renderRealmsRoadmap();
+          if (target === 'tab-grading') renderGradingView();
+        });
+      });
+
+      tabs[0].click();
+
+      // 管理者登入/登出
+      document.getElementById('admin-login-btn').addEventListener('click', () => {
+        checkAdminAction(() => {});
+      });
+
+      document.getElementById('admin-login-cancel-btn').addEventListener('click', () => {
+        document.getElementById('admin-login-modal').classList.add('hidden');
+        adminLoginCallback = null;
+      });
+
+      function handleAdminAuth() {
+        const inp = document.getElementById('admin-pass-input');
+        const val = (inp.value || '').trim();
+        if (val === MASTER_PASSWORD) {
+          isAdmin = true;
+          updateAdminUI();
+          document.getElementById('admin-login-modal').classList.add('hidden');
+          showToast('👑 掌門驗印功成，已取得宗門號令權！');
+          if (adminLoginCallback) {
+            adminLoginCallback();
+            adminLoginCallback = null;
+          }
+        } else {
+          showToast('❌ 密令錯誤，無法號令宗門！');
+          inp.value = '';
+          inp.focus();
+        }
+      }
+
+      document.getElementById('admin-login-submit-btn').addEventListener('click', handleAdminAuth);
+
+      document.getElementById('admin-pass-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          handleAdminAuth();
+        }
+      });
+
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        isAdmin = false;
+        updateAdminUI();
+        showToast('掌門已封印退席');
+      });
+
+      // 字體與字級按鈕監聽
+      document.querySelectorAll('.font-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          appState.currentFont = btn.getAttribute('data-font');
+          persistState(false);
+          renderDailyHomework();
+        });
+      });
+
+      document.querySelectorAll('.size-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          appState.currentSize = btn.getAttribute('data-size');
+          persistState(false);
+          renderDailyHomework();
+        });
+      });
+
+      // 時憲月曆月份切換
+      document.getElementById('cal-prev-month').addEventListener('click', () => {
+        calendarMonth--;
+        if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+        renderCalendar();
+      });
+      document.getElementById('cal-next-month').addEventListener('click', () => {
+        calendarMonth++;
+        if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+        renderCalendar();
+      });
+      document.getElementById('cal-go-today').addEventListener('click', () => {
+        const today = new Date();
+        calendarYear = today.getFullYear();
+        calendarMonth = today.getMonth();
+        selectedDateKey = getTodayDateKey();
+        renderDailyHomework();
+        renderCalendar();
+      });
+
+      // 晨曦點卯月曆月份切換
+      document.getElementById('morning-cal-prev').addEventListener('click', () => {
+        morningCalMonth--;
+        if (morningCalMonth < 0) { morningCalMonth = 11; morningCalYear--; }
+        renderMorningCalendar();
+      });
+      document.getElementById('morning-cal-next').addEventListener('click', () => {
+        morningCalMonth++;
+        if (morningCalMonth > 11) { morningCalMonth = 0; morningCalYear++; }
+        renderMorningCalendar();
+      });
+      document.getElementById('morning-cal-go-today').addEventListener('click', () => {
+        const today = new Date();
+        morningCalYear = today.getFullYear();
+        morningCalMonth = today.getMonth();
+        morningSelectedDateKey = getTodayDateKey();
+        renderMorningCheck();
+      });
+
+      // 建立作業輸入列元素
+      function createTaskEditRow(taskId = '', subject = '國語', text = '', visible = true) {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+        row.setAttribute('data-task-id', taskId || ('dt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
+
+        let subOptions = (appState.subjects || []).map(s => 
+          `<option value="${s.name}" ${s.name === subject ? 'selected' : ''}>${s.icon || ''} ${s.name}</option>`
+        ).join('');
+
+        row.innerHTML = `
+          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+            <input type="checkbox" class="task-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
+            <span>顯示</span>
+          </label>
+          <select class="task-subject-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+            ${subOptions}
+          </select>
+          <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入作業內容..." class="task-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+          <button class="del-task-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+        `;
+        return row;
+      }
+
+      function createNoticeEditRow(noticeId = '', category = '測驗', text = '', visible = true) {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+        row.setAttribute('data-notice-id', noticeId || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
+
+        row.innerHTML = `
+          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+            <input type="checkbox" class="notice-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
+            <span>顯示</span>
+          </label>
+          <select class="notice-category-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+            <option value="測驗" ${category === '測驗' ? 'selected' : ''}>測驗</option>
+            <option value="物品" ${category === '物品' ? 'selected' : ''}>物品</option>
+            <option value="其他" ${category === '其他' ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入測驗或攜帶用具備忘..." class="notice-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+          <button class="del-notice-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+        `;
+        return row;
+      }
+
+      document.getElementById('add-daily-task-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const container = document.getElementById('daily-tasks-editable-list');
+          const defaultSubject = (appState.subjects && appState.subjects.length > 0) ? appState.subjects[0].name : '國語';
+          const newRow = createTaskEditRow('', defaultSubject, '', true);
+          container.appendChild(newRow);
+
+          const inp = newRow.querySelector('.task-text-inp');
+          if (inp) inp.focus();
+        });
+      });
+
+      document.getElementById('add-daily-notice-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const container = document.getElementById('daily-notices-editable-list');
+          const newRow = createNoticeEditRow('', '測驗', '', true);
+          container.appendChild(newRow);
+
+          const inp = newRow.querySelector('.notice-text-inp');
+          if (inp) inp.focus();
+        });
+      });
+
+      document.getElementById('daily-tasks-editable-list').addEventListener('click', (e) => {
+        if (e.target.classList.contains('del-task-row')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-task-id]');
+            if (row) row.remove();
+          });
+        }
+      });
+
+      document.getElementById('daily-notices-editable-list').addEventListener('click', (e) => {
+        if (e.target.classList.contains('del-notice-row')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-notice-id]');
+            if (row) row.remove();
+          });
+        }
+      });
+
+      // 儲存並發布今日作業（寫入狀態、同步雲端並更新看板）
+      document.getElementById('save-daily-tasks-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
+          const updated = [];
+          rows.forEach(r => {
+            const id = r.getAttribute('data-task-id') || ('dt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+            const visible = r.querySelector('.task-visible-chk').checked;
+            const subject = r.querySelector('.task-subject-sel').value;
+            const text = r.querySelector('.task-text-inp').value.trim();
+            if (text) {
+              updated.push({ id, date: selectedDateKey, subject, text, visible });
+            }
+          });
+
+          if (!appState.dailyTasks) appState.dailyTasks = [];
+          appState.dailyTasks = appState.dailyTasks.filter(t => (t.date || getTodayDateKey()) !== selectedDateKey);
+          appState.dailyTasks.push(...updated);
+
+          persistState(true);
+          renderDailyHomework();
+          renderCalendar();
+          renderMorningCheck();
+          showToast(`已儲存發布 ${selectedDateKey} 今日作業並同步雲端！`);
+        });
+      });
+
+      // 儲存並發布測驗備忘
+      document.getElementById('save-daily-notices-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const rows = document.querySelectorAll('#daily-notices-editable-list [data-notice-id]');
+          const updated = [];
+          rows.forEach(r => {
+            const id = r.getAttribute('data-notice-id') || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+            const visible = r.querySelector('.notice-visible-chk').checked;
+            const category = r.querySelector('.notice-category-sel').value;
+            const text = r.querySelector('.notice-text-inp').value.trim();
+            if (text) {
+              updated.push({ id, date: selectedDateKey, category, text, visible });
+            }
+          });
+
+          if (!appState.dailyNotices) appState.dailyNotices = [];
+          appState.dailyNotices = appState.dailyNotices.filter(n => (n.date || getTodayDateKey()) !== selectedDateKey);
+          appState.dailyNotices.push(...updated);
+
+          persistState(true);
+          renderDailyHomework();
+          renderCalendar();
+          showToast(`已儲存發布 ${selectedDateKey} 測驗備忘並同步雲端！`);
+        });
+      });
+
+      // 將今日作業轉入修煉篇章
+      document.getElementById('convert-to-chapter-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const currentDayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.text.trim());
+          if (currentDayTasks.length === 0) {
+            showToast('當前良辰無有效作業可轉入篇章！');
+            return;
+          }
+
+          const dObj = new Date(selectedDateKey);
+          const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
+          let count = 0;
+
+          currentDayTasks.forEach(task => {
+            let targetSub = (appState.subjects || []).find(s => s.name === task.subject);
+            if (!targetSub) {
+              targetSub = { id: 'sub_' + Date.now(), name: task.subject, icon: '📚', chapters: [] };
+              appState.subjects.push(targetSub);
+            }
+            const chapTitle = `${dateTag} ${task.text}`;
+            if (!targetSub.chapters.includes(chapTitle)) {
+              targetSub.chapters.push(chapTitle);
+              count++;
+            }
+          });
+
+          persistState(true);
+          renderSubjectsView();
+          renderGradingView();
+          showToast(`成功轉入 ${count} 篇章至典籍篇章閣！`);
+        });
+      });
+
+      // 晨曦點卯：全體快速全繳
+      document.getElementById('morning-all-submit-btn').addEventListener('click', () => {
+        const hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+        const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
+        const effectiveData = ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) ? getPreviousHomeworkData() : hData;
+
+        const items = ['📜 聯絡簿', ...effectiveData.tasks.map(t => simplifyTaskName(t.text))];
+        if (!appState.morningRecords) appState.morningRecords = {};
+        if (!appState.morningRecords[morningSelectedDateKey]) {
+          appState.morningRecords[morningSelectedDateKey] = {};
+        }
+
+        (appState.students || []).forEach(st => {
+          if (!appState.morningRecords[morningSelectedDateKey][st.id]) {
+            appState.morningRecords[morningSelectedDateKey][st.id] = {};
+          }
+          items.forEach(it => {
+            appState.morningRecords[morningSelectedDateKey][st.id][it] = 'punctual';
+          });
+        });
+
+        persistState(true);
+        renderMorningCheck();
+        renderRanking();
+        showToast('全體同門已標記為準時繳交！');
+      });
+
+      // 晨曦點卯：資料同步
+      document.getElementById('morning-upload-sync-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+          const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
+          const effectiveData = ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) ? getPreviousHomeworkData() : hData;
+
+          const dayRecords = appState.morningRecords ? (appState.morningRecords[morningSelectedDateKey] || {}) : {};
+          let syncCount = 0;
+
+          effectiveData.tasks.forEach(task => {
+            const simName = simplifyTaskName(task.text);
+            const sub = (appState.subjects || []).find(s => s.name === task.subject);
+            if (!sub) return;
+
+            let matchedChapter = (sub.chapters || []).find(c => c.includes(simName) || task.text.includes(c));
+            if (!matchedChapter) {
+              matchedChapter = `[${effectiveData.date.slice(5)}] ${task.text}`;
+              sub.chapters.push(matchedChapter);
+            }
+
+            (appState.students || []).forEach(st => {
+              const status = dayRecords[st.id]?.[simName] || 'none';
+              if (!appState.records) appState.records = [];
+              let existingRec = appState.records.find(r => r.studentId === st.id && r.subject === sub.name && r.chapter === matchedChapter);
+
+              if (status === 'punctual') {
+                if (!existingRec) {
+                  existingRec = {
+                    id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    date: morningSelectedDateKey,
+                    timestamp: Date.now(),
+                    subject: sub.name,
+                    chapter: matchedChapter,
+                    studentId: st.id,
+                    studentName: st.name,
+                    items: { punctual: true, late: false, perfect: false, corrected: false },
+                    expGained: 4
+                  };
+                  appState.records.push(existingRec);
+                  st.exp = (st.exp || 0) + 4;
+                  syncCount++;
+                } else if (!existingRec.items.punctual) {
+                  if (existingRec.items.late) {
+                    st.exp = (st.exp || 0) + 3;
+                    existingRec.expGained = (existingRec.expGained || 0) + 3;
+                  } else {
+                    st.exp = (st.exp || 0) + 4;
+                    existingRec.expGained = (existingRec.expGained || 0) + 4;
+                  }
+                  existingRec.items.punctual = true;
+                  existingRec.items.late = false;
+                  syncCount++;
+                }
+              } else if (status === 'late') {
+                if (!existingRec) {
+                  existingRec = {
+                    id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    date: morningSelectedDateKey,
+                    timestamp: Date.now(),
+                    subject: sub.name,
+                    chapter: matchedChapter,
+                    studentId: st.id,
+                    studentName: st.name,
+                    items: { punctual: false, late: true, perfect: false, corrected: false },
+                    expGained: 1
+                  };
+                  appState.records.push(existingRec);
+                  st.exp = (st.exp || 0) + 1;
+                  syncCount++;
+                } else if (!existingRec.items.late) {
+                  if (existingRec.items.punctual) {
+                    st.exp = Math.max(0, (st.exp || 0) - 3);
+                    existingRec.expGained = Math.max(0, (existingRec.expGained || 0) - 3);
+                  } else {
+                    st.exp = (st.exp || 0) + 1;
+                    existingRec.expGained = (existingRec.expGained || 0) + 1;
+                  }
+                  existingRec.items.punctual = false;
+                  existingRec.items.late = true;
+                  syncCount++;
+                }
+              } else if (status === 'none' && existingRec) {
+                if (existingRec.items.punctual || existingRec.items.late) {
+                  const ded = existingRec.items.punctual ? 4 : 1;
+                  st.exp = Math.max(0, (st.exp || 0) - ded);
+                  existingRec.expGained = Math.max(0, (existingRec.expGained || 0) - ded);
+                  existingRec.items.punctual = false;
+                  existingRec.items.late = false;
+                  syncCount++;
+                }
+              }
+            });
+          });
+
+          persistState(true);
+          renderAll();
+          showToast(`資料同步功成！已批次連動 ${syncCount} 項修為卷宗！`);
+        });
+      });
+
+      // 批閱點卯台
+      document.getElementById('grading-subject-sel').addEventListener('change', () => {
+        updateGradingChaptersList();
+        renderGradingTable();
+      });
+
+      document.getElementById('grading-chapter-keyword').addEventListener('input', () => {
+        updateGradingChaptersList();
+        renderGradingTable();
+      });
+
+      document.getElementById('grading-chapter-sel').addEventListener('change', () => {
+        renderGradingTable();
+      });
+
+      function toggleGradingCalendar(e) {
+        if (e) e.stopPropagation();
+        const popover = document.getElementById('grading-calendar-popover');
+        if (!popover) return;
+        const isHidden = popover.classList.contains('hidden');
+        if (isHidden) {
+          const currentVal = document.getElementById('grading-date-query')?.value || selectedDateKey;
+          if (currentVal) {
+            const parts = currentVal.split('-');
+            if (parts.length === 3) {
+              gradingCalYear = parseInt(parts[0], 10);
+              gradingCalMonth = parseInt(parts[1], 10) - 1;
+            }
+          }
+          renderGradingCalendar();
+          popover.classList.remove('hidden');
+        } else {
+          popover.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('grading-date-query')?.addEventListener('click', toggleGradingCalendar);
+      document.getElementById('grading-calendar-toggle-btn')?.addEventListener('click', toggleGradingCalendar);
+
+      document.addEventListener('click', (e) => {
+        const popover = document.getElementById('grading-calendar-popover');
+        if (popover && !popover.classList.contains('hidden')) {
+          if (!popover.contains(e.target) && e.target.id !== 'grading-date-query' && e.target.id !== 'grading-calendar-toggle-btn') {
+            popover.classList.add('hidden');
+          }
+        }
+      });
+
+      document.getElementById('grading-cal-prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        gradingCalMonth--;
+        if (gradingCalMonth < 0) { gradingCalMonth = 11; gradingCalYear--; }
+        renderGradingCalendar();
+      });
+
+      document.getElementById('grading-cal-next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        gradingCalMonth++;
+        if (gradingCalMonth > 11) { gradingCalMonth = 0; gradingCalYear++; }
+        renderGradingCalendar();
+      });
+
+      document.getElementById('grading-cal-today')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const today = new Date();
+        gradingCalYear = today.getFullYear();
+        gradingCalMonth = today.getMonth();
+        const todayStr = getTodayDateKey();
+        const qInput = document.getElementById('grading-date-query');
+        if (qInput) qInput.value = todayStr;
+        renderGradingCalendar();
+        document.getElementById('grading-calendar-popover')?.classList.add('hidden');
+        updateGradingDateTasks();
+      });
+
+      document.getElementById('grading-date-tasks-sel').addEventListener('change', (e) => {
+        const sel = e.target;
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+
+        const subName = opt.getAttribute('data-subject');
+        const taskText = opt.getAttribute('data-text');
+        const qDate = document.getElementById('grading-date-query').value || selectedDateKey;
+
+        let sub = (appState.subjects || []).find(s => s.name === subName);
+        if (!sub) {
+          sub = { id: 'sub_' + Date.now(), name: subName, icon: '📚', chapters: [] };
+          appState.subjects.push(sub);
+        }
+
+        const subSel = document.getElementById('grading-subject-sel');
+        subSel.value = subName;
+
+        const dObj = new Date(qDate);
+        const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
+        const datePrefixedTitle = `${dateTag} ${taskText}`;
+
+        if (!sub.chapters) sub.chapters = [];
+        let matchedChap = sub.chapters.find(c => c === datePrefixedTitle || c === taskText || c.includes(taskText) || taskText.includes(c));
+
+        if (!matchedChap) {
+          matchedChap = datePrefixedTitle;
+          sub.chapters.push(matchedChap);
+        }
+
+        document.getElementById('grading-chapter-keyword').value = '';
+        updateGradingChaptersList();
+        document.getElementById('grading-chapter-sel').value = matchedChap;
+
+        renderGradingTable();
+        showToast(`已載入【${subName}】${matchedChap} 批閱名冊！`);
+      });
+
+      document.getElementById('batch-all-punctual-btn').addEventListener('click', () => {
+        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+          const p = tr.querySelector('.grade-punctual-chk');
+          const l = tr.querySelector('.grade-late-chk');
+          if (p && l) {
+            p.checked = true;
+            l.checked = false;
+            p.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      document.getElementById('batch-all-perfect-btn').addEventListener('click', () => {
+        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+          const f = tr.querySelector('.grade-perfect-chk');
+          const c = tr.querySelector('.grade-corrected-chk');
+          if (f) {
+            f.checked = true;
+            if (c) c.checked = true;
+            f.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      document.getElementById('clear-current-grading-btn').addEventListener('click', () => {
+        document.querySelectorAll('#grading-table-body input[type="checkbox"]').forEach(chk => {
+          chk.checked = false;
+          chk.dispatchEvent(new Event('change'));
+        });
+      });
+
+      // 呈報卷宗・頒發修為
+      document.getElementById('save-grading-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const subject = document.getElementById('grading-subject-sel').value;
+          const chapter = document.getElementById('grading-chapter-sel').value;
+          if (!chapter) {
+            showToast('請先選取修練篇章！');
+            return;
+          }
+
+          const rows = document.querySelectorAll('#grading-table-body tr');
+          let savedCount = 0;
+
+          rows.forEach(tr => {
+            const sid = tr.getAttribute('data-student-id');
+            const student = (appState.students || []).find(s => s.id === sid);
+            if (!student) return;
+
+            const p = tr.querySelector('.grade-punctual-chk').checked;
+            const l = tr.querySelector('.grade-late-chk').checked;
+            const f = tr.querySelector('.grade-perfect-chk').checked;
+            const c = tr.querySelector('.grade-corrected-chk').checked;
+
+            let exp = 0;
+            if (p) exp += 4;
+            if (l) exp += 1;
+            if (f) exp += 4;
+            if (c) exp += 2;
+
+            if (!appState.records) appState.records = [];
+            const existingIdx = appState.records.findIndex(r => r.studentId === sid && r.subject === subject && r.chapter === chapter);
+
+            if (exp > 0) {
+              if (existingIdx >= 0) {
+                student.exp = Math.max(0, (student.exp || 0) - (appState.records[existingIdx].expGained || 0));
+                appState.records[existingIdx].items = { punctual: p, late: l, perfect: f, corrected: c };
+                appState.records[existingIdx].expGained = exp;
+                appState.records[existingIdx].timestamp = Date.now();
+              } else {
+                appState.records.push({
+                  id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                  date: getTodayDateKey(),
+                  timestamp: Date.now(),
+                  subject,
+                  chapter,
+                  studentId: sid,
+                  studentName: student.name,
+                  items: { punctual: p, late: l, perfect: f, corrected: c },
+                  expGained: exp
+                });
+              }
+              student.exp = (student.exp || 0) + exp;
+              savedCount++;
+
+              const simChap = simplifyTaskName(chapter);
+              if (appState.morningRecords && appState.morningRecords[getTodayDateKey()]) {
+                if (!appState.morningRecords[getTodayDateKey()][sid]) appState.morningRecords[getTodayDateKey()][sid] = {};
+                if (p) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'punctual';
+                else if (l) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'late';
+              }
+            } else if (existingIdx >= 0) {
+              student.exp = Math.max(0, (student.exp || 0) - (appState.records[existingIdx].expGained || 0));
+              appState.records.splice(existingIdx, 1);
+            }
+          });
+
+          persistState(true);
+          renderAll();
+          showToast(`呈報成功！已為 ${savedCount} 位同門頒發修為並同步雲端！`);
+        });
+      });
+
+      // 錄入新弟子
+      document.getElementById('add-student-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          showPromptModal('錄入座下新弟子', '', (name) => {
+            if (name && name.trim()) {
+              if (!appState.students) appState.students = [];
+              const nextNum = appState.students.length > 0 ? Math.max(...appState.students.map(s => s.number)) + 1 : 1;
+              appState.students.push({
+                id: 's_' + Date.now(),
+                number: nextNum,
+                name: name.trim(),
+                exp: 0
+              });
+              persistState(true);
+              renderAll();
+              showToast(`同門弟子【${name.trim()}】已錄入宗門！`);
+            }
+          });
+        });
+      });
+
+      // 添創修煉典籍
+      document.getElementById('add-subject-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          showPromptModal('添創修煉典籍', '', (name) => {
+            if (name && name.trim()) {
+              if (!appState.subjects) appState.subjects = [];
+              appState.subjects.push({
+                id: 'sub_' + Date.now(),
+                name: name.trim(),
+                icon: '📚',
+                chapters: []
+              });
+              persistState(true);
+              renderAll();
+              showToast(`全新修煉典籍【${name.trim()}】已添創！`);
+            }
+          });
+        });
+      });
+
+      // 彈窗篇章添入
+      document.getElementById('modal-chapter-add-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          const inp = document.getElementById('modal-chapter-new-inp');
+          const title = (inp.value || '').trim();
+          if (!title) return;
+          const sub = (appState.subjects || []).find(s => s.id === activeEditingSubjectId);
+          if (!sub) return;
+
+          if (!sub.chapters) sub.chapters = [];
+          if (!sub.chapters.includes(title)) {
+            sub.chapters.push(title);
+            inp.value = '';
+            persistState(true);
+            renderModalChapterBadges(sub);
+            renderAll();
+            showToast(`已添入篇章「${title}」`);
+          } else {
+            showToast('此篇章名稱已存在！');
+          }
+        });
+      });
+
+      document.getElementById('modal-chapter-new-inp').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          document.getElementById('modal-chapter-add-btn').click();
+        }
+      });
+
+      document.getElementById('close-subject-modal-btn').addEventListener('click', () => {
+        document.getElementById('subject-modal').classList.add('hidden');
+        activeEditingSubjectId = null;
+      });
+
+      document.getElementById('close-student-realm-btn').addEventListener('click', () => {
+        document.getElementById('student-realm-modal').classList.add('hidden');
+      });
+
+      // 清空所有卷宗
+      document.getElementById('clear-all-history-btn').addEventListener('click', () => {
+        checkAdminAction(() => {
+          showConfirmModal('⚠️ 確定清空所有歷練卷宗？', '此舉將撤銷所有已登錄之歷史卷宗，同門修為將歸零重新起步。', () => {
+            appState.records = [];
+            (appState.students || []).forEach(st => st.exp = 0);
+            persistState(true);
+            renderAll();
+            showToast('所有歷史歷練卷宗已清空！');
+          });
+        });
+      });
+
+      document.getElementById('ranking-sort-sel')?.addEventListener('change', renderRanking);
+
+      renderAll();
+      updateAdminUI();
+    });
+  </script>
+</body>
+</html>
