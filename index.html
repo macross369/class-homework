@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;600;900&family=Noto+Sans+TC:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
   
-  <!-- Firebase 官方 CDN (相容版，免裝 Node.js 即開即用) -->
+  <!-- Firebase 官方 Compat SDK (免裝 Node.js，開箱即用) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
@@ -859,7 +859,6 @@
       { id: 'sub_oth', name: '其他', icon: '🎨', chapters: ['書法字帖練習', '同門生活省思錄'] }
     ];
 
-    // 輔助函式：取得今日與特定日期字串 YYYY-MM-DD
     function getTodayDateKey() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -871,7 +870,6 @@
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
-    // 彩虹漸層科目樣式表
     const SUBJECT_COLORS = [
       { name: '國語', bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300' },
       { name: '數學', bg: 'bg-orange-100', text: 'text-orange-900', border: 'border-orange-300' },
@@ -882,7 +880,6 @@
       { name: '其他', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' }
     ];
 
-    // 取得科目標籤樣式
     function getSubjectBadgeStyle(subjectName) {
       const found = SUBJECT_COLORS.find(c => c.name === subjectName);
       if (found) return found;
@@ -892,23 +889,13 @@
       return SUBJECT_COLORS[idx];
     }
 
-    // 取得備品/測驗標籤樣式 (奶茶色測驗、銀色物品、青綠色其他)
     function getNoticeBadge(category) {
       if (category === '測驗') {
-        return {
-          label: '測驗',
-          class: 'bg-[#ede0d4] text-[#6f4e37] border-[#ddb892]'
-        };
+        return { label: '測驗', class: 'bg-[#ede0d4] text-[#6f4e37] border-[#ddb892]' };
       } else if (category === '物品') {
-        return {
-          label: '物品',
-          class: 'bg-slate-200 text-slate-800 border-slate-300'
-        };
+        return { label: '物品', class: 'bg-slate-200 text-slate-800 border-slate-300' };
       } else {
-        return {
-          label: category || '其他',
-          class: 'bg-teal-100 text-teal-800 border-teal-300'
-        };
+        return { label: category || '其他', class: 'bg-teal-100 text-teal-800 border-teal-300' };
       }
     }
 
@@ -930,7 +917,7 @@
       students: DEFAULT_STUDENTS,
       subjects: DEFAULT_SUBJECTS,
       currentFont: 'kai',
-      currentSize: 'lg', // 預設為大 (投影 36px)
+      currentSize: 'lg',
       dailyTasks: [
         { id: 'dt1', date: getPreviousDateKey(1), subject: '國語', text: '國語習作第 42 至 45 頁並確實訂正', visible: true },
         { id: 'dt2', date: getPreviousDateKey(1), subject: '數學', text: '數學習作第 38 頁（完成第四單元練習）', visible: true },
@@ -993,7 +980,6 @@
       ]
     };
 
-    // 初始化模擬前一日的晨曦點卯紀錄
     appState.morningRecords[getPreviousDateKey(1)] = {
       's1': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
       's2': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
@@ -1011,7 +997,7 @@
       }
     } catch(e) {}
 
-    // 本地與雲端雙軌同步存檔函式
+    // 本地與雲端雙軌同步存檔
     function persistState(syncCloud = true) {
       try {
         localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
@@ -1028,12 +1014,12 @@
         })
         .catch((err) => {
           console.warn("雲端寫入提醒:", err);
-          updateCloudStatus('error', '雲端同步受限');
+          updateCloudStatus('error', '本地離線模式');
         });
       }
     }
 
-    // 初始化 Firebase 雲端監聽器（實現大螢幕電視與多裝置即時同步）
+    // 初始化 Firebase 雲端監聽器
     function initFirebaseSync() {
       if (!cloudDocRef) {
         updateCloudStatus('error', '未連線雲端');
@@ -1046,22 +1032,25 @@
         if (doc.exists) {
           const cloudData = doc.data();
           if (cloudData && cloudData.state) {
-            // 將遠端資料寫入本地
             appState = cloudData.state;
             try {
               localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
             } catch(e) {}
-            // 重新刷新畫面呈現最新進度
             renderAll();
           }
         } else {
-          // 雲端資料庫首次啟動，自動推送預設資料初始化
           persistState(true);
         }
       }, (err) => {
-        console.warn("Firestore 即時監聽失敗，切換為本地離線模式:", err);
+        console.warn("Firestore 監聽失敗，切換為本地離線模式:", err);
         updateCloudStatus('error', '本地離線模式');
       });
+    }
+
+    // 動態取得當前正在彈窗編輯的最新典籍物件（避免舊參考脫鉤）
+    function getActiveEditingSubject() {
+      if (!activeEditingSubjectId) return null;
+      return (appState.subjects || []).find(s => s.id === activeEditingSubjectId);
     }
 
     // ==========================================
@@ -1081,7 +1070,6 @@
       return { current, next };
     }
 
-    // 計算學生在晨曦點卯閣中每日功課（含聯絡簿與作業）均已齊全繳交的總次數
     function calculateStudentAllDoneCount(studentId) {
       let count = 0;
       const allDates = Object.keys(appState.morningRecords || {});
@@ -1097,7 +1085,6 @@
       return count;
     }
 
-    // 計算「萬象歸宗」累計達成與未達成次數（限以已設定作業的日期為基準）
     function calculateWanXiangStats() {
       const datesWithTasks = Array.from(new Set(
         (appState.dailyTasks || [])
@@ -1149,7 +1136,6 @@
       return { achievedCount, missedCount };
     }
 
-    // 簡化作業名稱
     function simplifyTaskName(fullText) {
       if (!fullText) return '修煉功課';
       let clean = fullText.trim();
@@ -1161,7 +1147,6 @@
       return clean.length >= 2 ? clean : fullText.slice(0, 8);
     }
 
-    // 回溯尋找前一日有聯絡簿作業的良辰
     function getPreviousHomeworkData() {
       const today = morningSelectedDateKey || getTodayDateKey();
       const allDatesWithTasks = Array.from(new Set(
@@ -1189,7 +1174,6 @@
       return { date: targetDate, tasks };
     }
 
-    // 計算所有境界的突破排行榜
     function calculateAllRealmRankings() {
       const studentHistory = {};
       (appState.students || []).forEach(st => {
@@ -1779,7 +1763,6 @@
       });
     }
 
-    // 開啟學生境界突破排名紀錄彈窗
     function openStudentRealmBreakthroughModal(studentId) {
       const student = (appState.students || []).find(s => s.id === studentId);
       if (!student) return;
@@ -2223,14 +2206,14 @@
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
             const subId = btn.getAttribute('data-id');
-            const sub = appState.subjects.find(s => s.id === subId);
+            const sub = (appState.subjects || []).find(s => s.id === subId);
             if (!sub) return;
             showPromptModal(`更名【${sub.name}】典籍`, sub.name, (newName) => {
               if (newName && newName.trim() && newName.trim() !== sub.name) {
                 const oldName = sub.name;
                 sub.name = newName.trim();
-                appState.records.forEach(r => { if (r.subject === oldName) r.subject = sub.name; });
-                appState.dailyTasks.forEach(t => { if (t.subject === oldName) t.subject = sub.name; });
+                (appState.records || []).forEach(r => { if (r.subject === oldName) r.subject = sub.name; });
+                (appState.dailyTasks || []).forEach(t => { if (t.subject === oldName) t.subject = sub.name; });
                 persistState(true);
                 renderAll();
                 showToast(`修煉典籍已更名為「${sub.name}」`);
@@ -2251,10 +2234,10 @@
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
             const subId = btn.getAttribute('data-id');
-            const sub = appState.subjects.find(s => s.id === subId);
+            const sub = (appState.subjects || []).find(s => s.id === subId);
             if (!sub) return;
             showConfirmModal(`確定銷毀【${sub.name}】典籍？`, '銷毀後該典籍的所有篇章將一併移除。', () => {
-              appState.subjects = appState.subjects.filter(s => s.id !== subId);
+              appState.subjects = (appState.subjects || []).filter(s => s.id !== subId);
               persistState(true);
               renderAll();
               showToast(`典籍【${sub.name}】已銷毀`);
@@ -2264,19 +2247,24 @@
       });
     }
 
+    // 打開觀看與修訂篇章彈窗
     function openSubjectModal(subjectId) {
       activeEditingSubjectId = subjectId;
-      const sub = (appState.subjects || []).find(s => s.id === subjectId);
+      const sub = getActiveEditingSubject();
       if (!sub) return;
 
       document.getElementById('subject-modal-display-title').textContent = `當前修煉典籍：${sub.name}`;
       document.getElementById('modal-chapter-new-inp').value = '';
-      renderModalChapterBadges(sub);
+      renderModalChapterBadges();
 
       document.getElementById('subject-modal').classList.remove('hidden');
     }
 
-    function renderModalChapterBadges(sub) {
+    // 渲染篇章徽章（動態即時檢索當前典籍，徹底修復連續刪除殘留問題）
+    function renderModalChapterBadges() {
+      const sub = getActiveEditingSubject();
+      if (!sub) return;
+
       const container = document.getElementById('modal-chapter-badge-container');
       container.innerHTML = '';
       const chapters = sub.chapters || [];
@@ -2287,32 +2275,44 @@
         return;
       }
 
-      chapters.forEach((chap, idx) => {
+      chapters.forEach((chap) => {
         const badge = document.createElement('div');
         badge.className = 'px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-xs font-bold text-stone-800 flex items-center space-x-2 shadow-2xs hover:bg-amber-200/80 transition';
         badge.innerHTML = `
           <span>${chap}</span>
-          <button class="del-chapter-btn text-stone-400 hover:text-rose-700 font-bold ml-1" title="刪除此篇章" data-idx="${idx}">×</button>
-          <button class="rename-chapter-btn text-stone-400 hover:text-amber-800 font-bold ml-1" title="更名此篇章" data-idx="${idx}">✏️</button>
+          <button class="del-chapter-btn text-stone-400 hover:text-rose-700 font-bold ml-1" title="刪除此篇章" data-chapter="${chap.replace(/"/g, '&quot;')}">×</button>
+          <button class="rename-chapter-btn text-stone-400 hover:text-amber-800 font-bold ml-1" title="更名此篇章" data-chapter="${chap.replace(/"/g, '&quot;')}">✏️</button>
         `;
         container.appendChild(badge);
       });
 
+      // 刪除篇章 (×) - 透過篇章名稱動態刪除
       container.querySelectorAll('.del-chapter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
-            const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            const chapName = sub.chapters[idx];
+            const chapName = btn.getAttribute('data-chapter');
+            const targetSub = getActiveEditingSubject();
+            if (!targetSub) return;
+
             showConfirmModal(`確定刪除篇章【${chapName}】？`, '刪除後相關歷練紀錄與所得修為將自動扣除。', () => {
-              sub.chapters.splice(idx, 1);
-              const removedRecs = (appState.records || []).filter(r => r.subject === sub.name && r.chapter === chapName);
+              const liveSub = getActiveEditingSubject();
+              if (!liveSub || !liveSub.chapters) return;
+
+              const cIdx = liveSub.chapters.indexOf(chapName);
+              if (cIdx !== -1) {
+                liveSub.chapters.splice(cIdx, 1);
+              }
+
+              // 同步扣除此典籍此篇章的歷練修為
+              const removedRecs = (appState.records || []).filter(r => r.subject === liveSub.name && r.chapter === chapName);
               removedRecs.forEach(rec => {
                 const st = (appState.students || []).find(s => s.id === rec.studentId);
                 if (st) st.exp = Math.max(0, (st.exp || 0) - (rec.expGained || 0));
               });
-              appState.records = (appState.records || []).filter(r => !(r.subject === sub.name && r.chapter === chapName));
+              appState.records = (appState.records || []).filter(r => !(r.subject === liveSub.name && r.chapter === chapName));
+
               persistState(true);
-              renderModalChapterBadges(sub);
+              renderModalChapterBadges();
               renderAll();
               showToast(`篇章【${chapName}】已刪除`);
             });
@@ -2320,22 +2320,34 @@
         });
       });
 
+      // 更名篇章 (✏️)
       container.querySelectorAll('.rename-chapter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
-            const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            const oldName = sub.chapters[idx];
+            const oldName = btn.getAttribute('data-chapter');
+            const targetSub = getActiveEditingSubject();
+            if (!targetSub) return;
+
             showPromptModal(`更名修煉篇章`, oldName, (newName) => {
               if (newName && newName.trim() && newName.trim() !== oldName) {
                 const freshName = newName.trim();
-                sub.chapters[idx] = freshName;
+                const liveSub = getActiveEditingSubject();
+                if (!liveSub || !liveSub.chapters) return;
+
+                const cIdx = liveSub.chapters.indexOf(oldName);
+                if (cIdx !== -1) {
+                  liveSub.chapters[cIdx] = freshName;
+                }
+
+                // 同步歷史卷宗篇章名稱
                 (appState.records || []).forEach(r => {
-                  if (r.subject === sub.name && r.chapter === oldName) {
+                  if (r.subject === liveSub.name && r.chapter === oldName) {
                     r.chapter = freshName;
                   }
                 });
+
                 persistState(true);
-                renderModalChapterBadges(sub);
+                renderModalChapterBadges();
                 renderAll();
                 showToast(`篇章已更名為「${freshName}」`);
               }
@@ -2411,6 +2423,12 @@
       renderStudentsView();
       renderSubjectsView();
       renderHistoryView();
+
+      // 若篇章彈窗處於開啟狀態，同步重繪以反映最新刪除/更名結果
+      const modal = document.getElementById('subject-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        renderModalChapterBadges();
+      }
     }
 
     // ==========================================
@@ -2651,7 +2669,6 @@
         renderMorningCheck();
       });
 
-      // 建立作業輸入列元素
       function createTaskEditRow(taskId = '', subject = '國語', text = '', visible = true) {
         const row = document.createElement('div');
         row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
@@ -2737,7 +2754,7 @@
         }
       });
 
-      // 儲存並發布今日作業（寫入狀態、同步雲端並更新看板）
+      // 儲存並發布今日作業
       document.getElementById('save-daily-tasks-btn').addEventListener('click', () => {
         checkAdminAction(() => {
           const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
@@ -3214,7 +3231,7 @@
           const inp = document.getElementById('modal-chapter-new-inp');
           const title = (inp.value || '').trim();
           if (!title) return;
-          const sub = (appState.subjects || []).find(s => s.id === activeEditingSubjectId);
+          const sub = getActiveEditingSubject();
           if (!sub) return;
 
           if (!sub.chapters) sub.chapters = [];
@@ -3222,7 +3239,7 @@
             sub.chapters.push(title);
             inp.value = '';
             persistState(true);
-            renderModalChapterBadges(sub);
+            renderModalChapterBadges();
             renderAll();
             showToast(`已添入篇章「${title}」`);
           } else {
