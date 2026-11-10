@@ -80,11 +80,24 @@
         </div>
       </div>
 
-      <div class="flex items-center space-x-3">
-        <div id="admin-badge" class="hidden items-center px-3 py-1 rounded-full text-xs font-bold bg-[#6e1e14] text-[#ffd699] border border-[#d48b3b] shadow-sm">
-          <span>👑 掌門驗印</span>
-          <button id="logout-btn" class="ml-2 underline hover:text-white" title="封印歇息">退席</button>
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- 掌門驗印狀態與備份/恢復操作區 -->
+        <div id="admin-badge" class="hidden items-center space-x-2">
+          <div class="flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#6e1e14] text-[#ffd699] border border-[#d48b3b] shadow-sm">
+            <span>👑 掌門驗印</span>
+            <button id="logout-btn" class="ml-2 underline hover:text-white" title="封印歇息">退席</button>
+          </div>
+          <!-- 掌門專屬：一鍵備份下載 -->
+          <button id="export-backup-btn" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#284e3a] text-[#d1fae5] hover:bg-[#34664c] transition border border-emerald-500 shadow flex items-center space-x-1" title="下載備份全站資料至本機電腦">
+            <span>📦</span> <span>備份卷宗</span>
+          </button>
+          <!-- 掌門專屬：上傳資料恢復 -->
+          <label class="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#5c2d0c] text-[#fde68a] hover:bg-[#783c12] transition border border-amber-400 shadow flex items-center space-x-1 cursor-pointer" title="上傳 JSON 備份檔恢復歷史紀錄">
+            <span>📥</span> <span>恢復卷宗</span>
+            <input type="file" id="import-backup-file" accept=".json" class="hidden">
+          </label>
         </div>
+
         <button id="admin-login-btn" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] transition border border-[#d4a853] shadow">
           掌門登入
         </button>
@@ -832,7 +845,7 @@
     ];
 
     // ==========================================
-    // 2. 初始修煉資料庫與典籍配置 (彩虹調色盤)
+    // 2. 初始修煉資料庫與典籍配置 (僅在無任何歷史紀錄時作為種子資料)
     // ==========================================
     const DEFAULT_STUDENTS = [
       { id: 's1', number: 1, name: '令狐沖', exp: 6 },
@@ -894,7 +907,7 @@
     }
 
     // ==========================================
-    // 3. 系統核心狀態與雙向快取載入
+    // 3. 系統核心狀態與防覆蓋快取載入機制
     // ==========================================
     let isAdmin = false;
     let selectedDateKey = getTodayDateKey();
@@ -907,6 +920,7 @@
     let gradingCalMonth = new Date().getMonth();
     let activeEditingSubjectId = null;
 
+    // 基礎骨架（若本機或雲端完全無紀錄時才會採用預設值）
     let appState = {
       students: DEFAULT_STUDENTS,
       subjects: DEFAULT_SUBJECTS,
@@ -927,71 +941,29 @@
         { id: 'dn4', date: getTodayDateKey(), category: '其他', text: '繳回流感疫苗意願調查表', visible: true }
       ],
       morningRecords: {},
-      records: [
-        {
-          id: 'rec_init1',
-          date: getPreviousDateKey(1),
-          timestamp: Date.now() - 86400000,
-          subject: '國語',
-          chapter: '國習第一課',
-          studentId: 's2',
-          studentName: '黃蓉',
-          items: { punctual: true, late: false, perfect: true, corrected: true },
-          expGained: 10
-        },
-        {
-          id: 'rec_init2',
-          date: getPreviousDateKey(1),
-          timestamp: Date.now() - 86400000,
-          subject: '數學',
-          chapter: '數習第1單元',
-          studentId: 's2',
-          studentName: '黃蓉',
-          items: { punctual: true, late: false, perfect: true, corrected: false },
-          expGained: 8
-        },
-        {
-          id: 'rec_init3',
-          date: getPreviousDateKey(1),
-          timestamp: Date.now() - 86400000,
-          subject: '國語',
-          chapter: '國習第一課',
-          studentId: 's4',
-          studentName: '陸雪琪',
-          items: { punctual: true, late: false, perfect: true, corrected: true },
-          expGained: 10
-        },
-        {
-          id: 'rec_init4',
-          date: getPreviousDateKey(1),
-          timestamp: Date.now() - 86400000,
-          subject: '國語',
-          chapter: '國習第一課',
-          studentId: 's1',
-          studentName: '令狐沖',
-          items: { punctual: true, late: false, perfect: false, corrected: true },
-          expGained: 6
-        }
-      ]
+      records: []
     };
 
-    appState.morningRecords[getPreviousDateKey(1)] = {
-      's1': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
-      's2': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' },
-      's4': { '📜 聯絡簿': 'punctual', '國語習作': 'punctual', '數學習作': 'punctual', '自主探索學習單': 'punctual' }
-    };
-
-    // 嘗試從本地快取讀取
+    // 關鍵防覆蓋機制：頁面載入時優先自 localStorage 恢復現有運作資料
     try {
       const localCached = localStorage.getItem('xiandao_app_state');
       if (localCached) {
         const parsed = JSON.parse(localCached);
-        if (parsed && Array.isArray(parsed.students)) {
-          appState = Object.assign(appState, parsed);
+        if (parsed && typeof parsed === 'object') {
+          // 深度合併，確保更新 HTML 程式碼上傳至 GitHub 時，用戶資料不受任何影響
+          if (Array.isArray(parsed.students)) appState.students = parsed.students;
+          if (Array.isArray(parsed.subjects)) appState.subjects = parsed.subjects;
+          if (Array.isArray(parsed.dailyTasks)) appState.dailyTasks = parsed.dailyTasks;
+          if (Array.isArray(parsed.dailyNotices)) appState.dailyNotices = parsed.dailyNotices;
+          if (parsed.morningRecords && typeof parsed.morningRecords === 'object') appState.morningRecords = parsed.morningRecords;
+          if (Array.isArray(parsed.records)) appState.records = parsed.records;
+          if (parsed.currentFont) appState.currentFont = parsed.currentFont;
+          if (parsed.currentSize) appState.currentSize = parsed.currentSize;
+          if (typeof parsed.wanXiangStartDate === 'string') appState.wanXiangStartDate = parsed.wanXiangStartDate;
         }
       }
     } catch (e) {
-      console.warn("讀取本地快取提示:", e);
+      console.warn("讀取本地歷史快取提示:", e);
     }
 
     // 儲存狀態至本地與 Firebase 雲端
@@ -1023,13 +995,23 @@
       }
     }
 
-    // 啟動 Firebase 即時監聽 (大電視與電腦自動跨螢幕即時同步)
+    // 啟動 Firebase 即時雙向監聽 (防覆蓋：若雲端已有資料，永遠以雲端最新紀錄為主)
     if (isFirebaseReady && cloudDocRef) {
       cloudDocRef.onSnapshot((doc) => {
         if (doc && doc.exists) {
           const data = doc.data();
-          if (data && data.state && Array.isArray(data.state.students)) {
-            appState = Object.assign(appState, data.state);
+          if (data && data.state && typeof data.state === 'object') {
+            const cloudState = data.state;
+            if (Array.isArray(cloudState.students)) appState.students = cloudState.students;
+            if (Array.isArray(cloudState.subjects)) appState.subjects = cloudState.subjects;
+            if (Array.isArray(cloudState.dailyTasks)) appState.dailyTasks = cloudState.dailyTasks;
+            if (Array.isArray(cloudState.dailyNotices)) appState.dailyNotices = cloudState.dailyNotices;
+            if (cloudState.morningRecords) appState.morningRecords = cloudState.morningRecords;
+            if (Array.isArray(cloudState.records)) appState.records = cloudState.records;
+            if (cloudState.currentFont) appState.currentFont = cloudState.currentFont;
+            if (cloudState.currentSize) appState.currentSize = cloudState.currentSize;
+            if (typeof cloudState.wanXiangStartDate === 'string') appState.wanXiangStartDate = cloudState.wanXiangStartDate;
+
             localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
             renderAll();
             const statusEl = document.getElementById('cloud-sync-status');
@@ -1039,6 +1021,7 @@
             }
           }
         } else {
+          // 僅在雲端完全為空文件時，才首次把現有本機資料推上雲端做初始建檔
           persistState(true);
         }
       }, (error) => {
@@ -2551,7 +2534,70 @@
     }
 
     // ==========================================
-    // 7. 事件監聽器綁定
+    // 7. 一鍵備份下載與上傳恢復功能 (JSON 匯出/匯入)
+    // ==========================================
+    function exportStateBackup() {
+      try {
+        const backupData = {
+          version: '1.0',
+          exportTimestamp: Date.now(),
+          exportDate: getTodayDateKey(),
+          appState: appState
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        const filename = `武閣修練譜_全站備份_${getTodayDateKey()}_${Date.now().toString().slice(-4)}.json`;
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('📦 宗門卷宗已全數下載備份至本機！');
+      } catch (err) {
+        console.error("備份下載失敗:", err);
+        showToast('❌ 下載備份失敗，請稍後再試！');
+      }
+    }
+
+    function importStateBackup(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const parsed = JSON.parse(content);
+          const imported = parsed.appState || parsed;
+
+          if (!imported || !Array.isArray(imported.students)) {
+            showToast('❌ 備份檔案格式不正確，無法識別同門弟子錄！');
+            return;
+          }
+
+          showConfirmModal('確定恢復宗門卷宗？', '上傳後將以備份檔案內容全面覆蓋當前資料，並自動同步至雲端與各裝置。', () => {
+            appState.students = imported.students || [];
+            appState.subjects = imported.subjects || DEFAULT_SUBJECTS;
+            appState.dailyTasks = imported.dailyTasks || [];
+            appState.dailyNotices = imported.dailyNotices || [];
+            appState.morningRecords = imported.morningRecords || {};
+            appState.records = imported.records || [];
+            if (imported.wanXiangStartDate !== undefined) appState.wanXiangStartDate = imported.wanXiangStartDate;
+            if (imported.currentFont) appState.currentFont = imported.currentFont;
+            if (imported.currentSize) appState.currentSize = imported.currentSize;
+
+            persistState();
+            renderAll();
+            showToast('📥 宗門歷史卷宗已功成恢復！');
+          });
+        } catch (err) {
+          console.error("備份讀取解析失敗:", err);
+          showToast('❌ 檔案讀取失敗，請確認是否為標準 JSON 備份檔！');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ==========================================
+    // 8. 事件監聽器綁定
     // ==========================================
     window.addEventListener('DOMContentLoaded', () => {
       const tabs = document.querySelectorAll('.nav-tab');
@@ -2579,6 +2625,24 @@
 
       document.getElementById('admin-login-btn').addEventListener('click', () => {
         checkAdminAction(() => {});
+      });
+
+      // 掌門一鍵備份下載按鈕
+      document.getElementById('export-backup-btn')?.addEventListener('click', () => {
+        checkAdminAction(() => {
+          exportStateBackup();
+        });
+      });
+
+      // 掌門備份恢復上傳 input 監聽
+      document.getElementById('import-backup-file')?.addEventListener('change', (e) => {
+        checkAdminAction(() => {
+          const file = e.target.files?.[0];
+          if (file) {
+            importStateBackup(file);
+          }
+          e.target.value = ''; // 重設以允許重複選取相同檔案
+        });
       });
 
       document.getElementById('admin-login-cancel-btn').addEventListener('click', () => {
