@@ -2268,12 +2268,7 @@
           if (lChk.checked) pChk.checked = false;
           updateExp();
         });
-        fChk.addEventListener('change', () => {
-          if (fChk.checked) {
-            cChk.checked = true;
-          }
-          updateExp();
-        });
+        fChk.addEventListener('change', updateExp);
         cChk.addEventListener('change', updateExp);
 
         updateExp();
@@ -3473,10 +3468,8 @@
       document.getElementById('batch-all-perfect-btn').addEventListener('click', () => {
         document.querySelectorAll('#grading-table-body tr').forEach(tr => {
           const f = tr.querySelector('.grade-perfect-chk');
-          const c = tr.querySelector('.grade-corrected-chk');
           if (f) {
             f.checked = true;
-            if (c) c.checked = true;
             f.dispatchEvent(new Event('change'));
           }
         });
