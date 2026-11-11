@@ -1050,12 +1050,18 @@
       const allDates = Object.keys(appState.morningRecords || {});
       allDates.forEach(date => {
         const hData = getHomeworkDataForDate(date, true);
-        if (hData && hData.tasks && hData.tasks.length > 0) {
-          const items = ['📜 聯絡簿', ...hData.tasks.map(t => simplifyTaskName(t.text))];
-          const stMap = appState.morningRecords[date]?.[studentId] || {};
-          const isAllDone = items.length > 0 && items.every(item => stMap[item] === 'punctual' || stMap[item] === 'late');
-          if (isAllDone) count++;
-        }
+        const notices = (appState.dailyNotices || []).filter(n => (n.date || date) === date && n.visible && n.text && n.text.trim().length > 0);
+        const hasContent = (hData && hData.tasks && hData.tasks.length > 0) || (notices.length > 0);
+        
+        // 若當日無作業且無攜帶物品/測驗，不繳交聯絡簿，不計入功德圓滿
+        if (!hasContent) return;
+
+        const items = ['📜 聯絡簿', ...(hData ? hData.tasks.map(t => simplifyTaskName(t.text)) : [])];
+        if (items.length === 0) return;
+
+        const stMap = appState.morningRecords[date]?.[studentId] || {};
+        const isAllDone = items.every(item => stMap[item] === 'punctual' || stMap[item] === 'late');
+        if (isAllDone) count++;
       });
       return count;
     }
@@ -1065,39 +1071,56 @@
       const todayStr = getTodayDateKey();
       const startDate = appState.wanXiangStartDate || '';
 
-      const datesWithTasks = Array.from(new Set(
-        (appState.dailyTasks || [])
-          .filter(t => t.text && t.text.trim().length > 0)
-          .map(t => t.date || todayStr)
-      ))
-      .filter(d => !startDate || d >= startDate)
-      .sort();
-
-      let achievedCount = 0;
-      let missedCount = 0;
-
       if (!appState.students || appState.students.length === 0) {
         return { achievedCount: 0, missedCount: 0 };
       }
 
-      datesWithTasks.forEach(dateStr => {
-        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || todayStr) === dateStr && t.text && t.text.trim().length > 0);
-        if (dayTasks.length === 0) return;
+      // 取得所有有已指派「顯示」作業的日期，以及所有有進行點卯記錄的日期集合
+      const candidateDates = new Set();
+      (appState.dailyTasks || []).forEach(t => {
+        if (t.visible && t.text && t.text.trim().length > 0) {
+          candidateDates.add(t.date || todayStr);
+        }
+      });
+      if (appState.morningRecords) {
+        Object.keys(appState.morningRecords).forEach(d => candidateDates.add(d));
+      }
+      candidateDates.add(todayStr);
 
-        const items = ['📜 聯絡簿', ...dayTasks.map(t => simplifyTaskName(t.text))];
+      const checkDates = Array.from(candidateDates)
+        .filter(d => !startDate || d >= startDate)
+        .sort();
 
-        let dayRecords = appState.morningRecords ? appState.morningRecords[dateStr] : null;
-        if (!dayRecords && appState.morningRecords) {
-          for (const [mDate, recs] of Object.entries(appState.morningRecords)) {
-            const firstStudentRec = Object.values(recs)[0];
-            if (firstStudentRec && dayTasks.some(t => simplifyTaskName(t.text) in firstStudentRec)) {
-              dayRecords = recs;
-              break;
-            }
-          }
+      let achievedCount = 0;
+      let missedCount = 0;
+
+      checkDates.forEach(dateStr => {
+        // 取得該點卯良辰對應之作業與學用品（與 renderMorningCheck 完全一致）
+        let hData = getPreviousHomeworkData(dateStr);
+        if (!hData || !hData.tasks || hData.tasks.length === 0) {
+          hData = getHomeworkDataForDate(dateStr, true);
         }
 
-        const isWanXiang = dayRecords && appState.students.every(st => {
+        const hasTasks = hData && hData.tasks && hData.tasks.length > 0;
+        const hasNotices = hData && hData.notices && hData.notices.length > 0;
+
+        // 若該日無任何指定作業與學用品，不繳聯絡簿，不納入統計
+        if (!hasTasks && !hasNotices) return;
+
+        const items = ['📜 聯絡簿'];
+        if (hasTasks) {
+          items.push(...hData.tasks.filter(t => t.visible).map(t => simplifyTaskName(t.text)));
+        }
+        if (hasNotices) {
+          const carryingItems = hData.notices.filter(n => n.visible && n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
+          items.push(...carryingItems);
+        }
+
+        if (items.length === 0) return;
+
+        const dayRecords = appState.morningRecords ? appState.morningRecords[dateStr] : null;
+
+        const isWanXiang = !!dayRecords && appState.students.every(st => {
           const stMap = dayRecords[st.id] || {};
           return items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
         });
@@ -1137,9 +1160,12 @@
 
       if (allDatesWithTasks.length > 0) {
         const targetDate = allDatesWithTasks[0];
+        const tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text.trim());
+        const notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === targetDate && n.visible && n.text.trim());
         return {
           date: targetDate,
-          tasks: (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text.trim())
+          tasks,
+          notices
         };
       }
       return null;
@@ -1147,8 +1173,12 @@
 
     function getHomeworkDataForDate(targetDate, onlyVisible = true) {
       let tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate);
-      if (onlyVisible) tasks = tasks.filter(t => t.visible && t.text.trim().length > 0);
-      return { date: targetDate, tasks };
+      let notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === targetDate);
+      if (onlyVisible) {
+        tasks = tasks.filter(t => t.visible && t.text.trim().length > 0);
+        notices = notices.filter(n => n.visible && n.text.trim().length > 0);
+      }
+      return { date: targetDate, tasks, notices };
     }
 
     function calculateAllRealmRankings() {
@@ -1436,8 +1466,8 @@
         const cell = document.createElement('button');
         cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200';
 
-        const hasRecord = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === dStr && t.text.trim()) ||
-                          (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === dStr && n.text.trim());
+        const hasRecord = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === dStr && t.visible && t.text.trim()) ||
+                          (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === dStr && n.visible && n.text.trim());
 
         if (dStr === selectedDateKey) {
           cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
@@ -1478,13 +1508,30 @@
 
       document.getElementById('morning-source-date').textContent = hData.date || '無前置文牘';
 
-      const items = [
-        '📜 聯絡簿',
-        ...hData.tasks.map(t => simplifyTaskName(t.text))
-      ];
+      const hasTasks = hData && hData.tasks && hData.tasks.length > 0;
+      const hasNotices = hData && hData.notices && hData.notices.length > 0;
+      const hasAnyWorkOrItem = hasTasks || hasNotices;
+
+      // 若當日無作業或攜帶物品時，則當日不繳交聯絡簿，聯絡簿項目則不予顯示
+      let items = [];
+      if (hasAnyWorkOrItem) {
+        items.push('📜 聯絡簿');
+        if (hasTasks) {
+          items.push(...hData.tasks.map(t => simplifyTaskName(t.text)));
+        }
+        if (hasNotices) {
+          // 若有攜帶物品或測驗，一併納入繳驗核對
+          const carryingItems = hData.notices.filter(n => n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
+          items.push(...carryingItems);
+        }
+      }
 
       const table = document.getElementById('morning-check-table');
       table.innerHTML = '';
+
+      const students = appState.students || [];
+      const hasStudents = students.length > 0;
+      const hasItems = items.length > 0;
 
       if (!appState.morningRecords) appState.morningRecords = {};
       if (!appState.morningRecords[morningSelectedDateKey]) {
@@ -1495,7 +1542,7 @@
       const thead = document.createElement('thead');
       thead.className = 'bg-amber-100 text-stone-900 font-bold border-b border-amber-300';
       let headerHtml = `<tr><th class="py-2.5 px-3 border-r border-amber-200 min-w-[130px] text-left">作業項目 ＼ 弟子</th>`;
-      (appState.students || []).forEach(st => {
+      students.forEach(st => {
         headerHtml += `<th class="py-2.5 px-2 border-r border-amber-200 min-w-[70px]">
           <div>${st.name}</div>
           <div class="text-[10px] text-stone-500 font-normal">#${st.number}</div>
@@ -1508,68 +1555,91 @@
       const tbody = document.createElement('tbody');
       tbody.className = 'divide-y divide-amber-100';
 
-      let allItemsAllStudentsCompleted = items.length > 0;
+      if (!hasItems) {
+        // 當日無作業或攜帶物品時的提示行
+        const trEmpty = document.createElement('tr');
+        trEmpty.innerHTML = `
+          <td colspan="${students.length + 2}" class="py-8 text-center text-stone-400 font-bold text-xs bg-amber-50/20 tracking-wider">
+            🍃 當日無指定課業與攜帶物品，免繳聯絡簿與點卯
+          </td>
+        `;
+        tbody.appendChild(trEmpty);
+      } else {
+        items.forEach(itemName => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-amber-50/50 transition';
 
-      items.forEach(itemName => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-amber-50/50 transition';
+          let rowHtml = `<td class="py-2 px-3 border-r border-amber-200 text-left font-bold text-stone-800 bg-amber-50/30 whitespace-nowrap">${itemName}</td>`;
+          let itemCompletedByAll = hasStudents;
 
-        let rowHtml = `<td class="py-2 px-3 border-r border-amber-200 text-left font-bold text-stone-800 bg-amber-50/30 whitespace-nowrap">${itemName}</td>`;
-        let itemCompletedByAll = true;
+          students.forEach(st => {
+            const status = dayRecords[st.id]?.[itemName] || 'none';
+            if (status !== 'punctual' && status !== 'late') {
+              itemCompletedByAll = false;
+            }
 
-        (appState.students || []).forEach(st => {
-          const status = dayRecords[st.id]?.[itemName] || 'none';
-          if (status !== 'punctual' && status !== 'late') {
-            itemCompletedByAll = false;
-            allItemsAllStudentsCompleted = false;
+            let btnClass = 'bg-stone-100 text-stone-500 hover:bg-stone-200 border-stone-200';
+            let btnText = '未繳';
+            if (status === 'punctual') {
+              btnClass = 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-sm';
+              btnText = '✓ 已繳';
+            } else if (status === 'late') {
+              btnClass = 'bg-amber-500 text-stone-950 font-bold border-amber-600 shadow-sm';
+              btnText = '⚡ 遲交';
+            }
+
+            rowHtml += `<td class="py-2 px-1 border-r border-amber-200">
+              <button class="morning-toggle-btn w-full py-1 px-1.5 rounded text-xs border transition ${btnClass}"
+                data-student-id="${st.id}" data-item-name="${itemName}">
+                ${btnText}
+              </button>
+            </td>`;
+          });
+
+          // 全閣繳齊狀態判斷
+          if (!hasStudents) {
+            rowHtml += `<td class="py-2 px-2 text-stone-400 font-semibold text-[11px]">—</td>`;
+          } else if (itemCompletedByAll) {
+            rowHtml += `<td class="py-2 px-2 font-bold text-[#8a1c0e] bg-rose-50 border-amber-200 animate-pulse">💮 全閣完卷</td>`;
+          } else {
+            rowHtml += `<td class="py-2 px-2 text-stone-400 font-semibold text-[11px]">尚有缺繳</td>`;
           }
 
-          let btnClass = 'bg-stone-100 text-stone-500 hover:bg-stone-200 border-stone-200';
-          let btnText = '未繳';
-          if (status === 'punctual') {
-            btnClass = 'bg-emerald-600 text-white font-bold border-emerald-700 shadow-sm';
-            btnText = '✓ 已繳';
-          } else if (status === 'late') {
-            btnClass = 'bg-amber-500 text-stone-950 font-bold border-amber-600 shadow-sm';
-            btnText = '⚡ 遲交';
-          }
-
-          rowHtml += `<td class="py-2 px-1 border-r border-amber-200">
-            <button class="morning-toggle-btn w-full py-1 px-1.5 rounded text-xs border transition ${btnClass}"
-              data-student-id="${st.id}" data-item-name="${itemName}">
-              ${btnText}
-            </button>
-          </td>`;
+          tr.innerHTML = rowHtml;
+          tbody.appendChild(tr);
         });
+      }
 
-        if (itemCompletedByAll) {
-          rowHtml += `<td class="py-2 px-2 font-bold text-[#8a1c0e] bg-rose-50 border-amber-200 animate-pulse">💮 全閣完卷</td>`;
-        } else {
-          rowHtml += `<td class="py-2 px-2 text-stone-400 font-semibold text-[11px]">尚有缺繳</td>`;
-        }
-
-        tr.innerHTML = rowHtml;
-        tbody.appendChild(tr);
-      });
-
+      // 底部弟子繳齊狀態與萬象歸宗判斷
       const footerTr = document.createElement('tr');
       footerTr.className = 'bg-amber-100/70 font-bold border-t-2 border-amber-300';
       let footHtml = `<td class="py-2.5 px-3 border-r border-amber-200 text-left text-amber-950 font-bold">弟子繳齊狀態</td>`;
 
-      (appState.students || []).forEach(st => {
-        const stMap = dayRecords[st.id] || {};
-        const isStDone = items.length > 0 && items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
-        if (isStDone) {
-          footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-[#8c4314] bg-amber-200/60 font-bold text-[11px]">🏆 功德圓滿</td>`;
-        } else {
-          footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-stone-400 font-normal text-[11px]">功課未齊</td>`;
-        }
-      });
-
-      if (allItemsAllStudentsCompleted) {
-        footHtml += `<td class="py-2.5 px-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs shadow-inner">🎉 萬象歸宗</td>`;
+      if (!hasItems || !hasStudents) {
+        // 如當日無作業或無弟子時，弟子繳齊狀況及全體繳齊狀況則不予判斷（不自動判定功德圓滿或萬象歸宗）
+        students.forEach(() => {
+          footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-stone-400 font-normal text-xs">—</td>`;
+        });
+        footHtml += `<td class="py-2.5 px-2 bg-stone-100 text-stone-400 font-bold text-xs">—</td>`;
       } else {
-        footHtml += `<td class="py-2.5 px-2 text-stone-500 font-bold text-[11px]">催繳中</td>`;
+        let allItemsAllStudentsCompleted = true;
+
+        students.forEach(st => {
+          const stMap = dayRecords[st.id] || {};
+          const isStDone = items.length > 0 && items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
+          if (isStDone) {
+            footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-[#8c4314] bg-amber-200/60 font-bold text-[11px]">🏆 功德圓滿</td>`;
+          } else {
+            footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-stone-400 font-normal text-[11px]">功課未齊</td>`;
+            allItemsAllStudentsCompleted = false;
+          }
+        });
+
+        if (allItemsAllStudentsCompleted) {
+          footHtml += `<td class="py-2.5 px-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs shadow-inner">🎉 萬象歸宗</td>`;
+        } else {
+          footHtml += `<td class="py-2.5 px-2 text-stone-500 font-bold text-[11px]">催繳中</td>`;
+        }
       }
 
       footerTr.innerHTML = footHtml;
@@ -1943,7 +2013,7 @@
         cell.type = 'button';
         cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200 flex flex-col items-center justify-center';
 
-        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === dStr && t.text && t.text.trim());
+        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === dStr && t.visible && t.text && t.text.trim());
         const hasTasks = dayTasks.length > 0;
 
         if (dStr === activeDate) {
@@ -1982,10 +2052,11 @@
       const tasksSel = document.getElementById('grading-date-tasks-sel');
       if (!tasksSel) return;
 
-      const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.text && t.text.trim().length > 0);
+      // 嚴格僅列出有勾選「顯示」且有內容的作業
+      const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text && t.text.trim().length > 0);
 
       if (dayTasks.length === 0) {
-        tasksSel.innerHTML = '<option value="">(此日期尚無作業設定)</option>';
+        tasksSel.innerHTML = '<option value="">(此日期尚無顯示中之作業)</option>';
       } else {
         let opts = '<option value="">-- 請選取當日作業 (共 ' + dayTasks.length + ' 項) --</option>';
         dayTasks.forEach(task => {
@@ -2957,7 +3028,25 @@
         }
         const effectiveData = hData;
 
+        const hasTasks = effectiveData && effectiveData.tasks && effectiveData.tasks.length > 0;
+        const hasNotices = effectiveData && effectiveData.notices && effectiveData.notices.length > 0;
+
+        // 防呆：若當日無作業或名冊無弟子，不予執行全繳
+        if (!hasTasks && !hasNotices) {
+          showToast('當日無作業與攜帶物品，無須全繳！');
+          return;
+        }
+        if (!appState.students || appState.students.length === 0) {
+          showToast('同門弟子名冊尚無人員，無法全繳！');
+          return;
+        }
+
         const items = ['📜 聯絡簿', ...effectiveData.tasks.map(t => simplifyTaskName(t.text))];
+        if (hasNotices) {
+          const carryingItems = effectiveData.notices.filter(n => n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
+          items.push(...carryingItems);
+        }
+
         if (!appState.morningRecords) appState.morningRecords = {};
         if (!appState.morningRecords[morningSelectedDateKey]) {
           appState.morningRecords[morningSelectedDateKey] = {};
