@@ -258,7 +258,7 @@
               <h4 class="text-lg font-bold font-wuxia text-[#5c2d0c] flex items-center space-x-2">
                 <span>✏️</span> <span>掌門今日作業編修台</span>
               </h4>
-              <p class="text-xs text-stone-500">（未勾選「顯示」則保留於系統，不推播至前台大電視）</p>
+              <p class="text-xs text-stone-500">（若當日尚未建置，系統已自動預載最近一日項目並預設為「未顯示」，老師可修改後勾選顯示並發布）</p>
             </div>
             <button id="add-daily-task-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
               + 新增作業
@@ -286,7 +286,7 @@
               <h4 class="text-lg font-bold font-wuxia text-[#5c2d0c] flex items-center space-x-2">
                 <span>🎒</span> <span>明日測驗與攜帶物品編修台</span>
               </h4>
-              <p class="text-xs text-stone-500">（設定明日測驗、攜帶用具或備忘事項，儲存後自動延續編號排列於作業下方）</p>
+              <p class="text-xs text-stone-500">（設定明日測驗、攜帶用具或備忘事項；若空白已自動預載最近一日項目且預設未顯示）</p>
             </div>
             <button id="add-daily-notice-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
               + 新增測驗/物品
@@ -1458,26 +1458,83 @@
       return row;
     }
 
+    // 取得歷史上最近一日有填寫作業的記錄（自動跳過無資料的週末與假日）
+    function getLatestHistoricalTasks(targetDate) {
+      const pastDates = Array.from(new Set(
+        (appState.dailyTasks || [])
+          .filter(t => (t.date || getTodayDateKey()) < targetDate && t.text && t.text.trim().length > 0)
+          .map(t => t.date || getTodayDateKey())
+      )).sort().reverse();
+
+      if (pastDates.length > 0) {
+        const latestDate = pastDates[0];
+        const tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === latestDate && t.text && t.text.trim().length > 0);
+        return { date: latestDate, tasks };
+      }
+      return null;
+    }
+
+    // 取得歷史上最近一日有填寫測驗與攜帶用具的記錄（自動跳過無資料之空白日）
+    function getLatestHistoricalNotices(targetDate) {
+      const pastDates = Array.from(new Set(
+        (appState.dailyNotices || [])
+          .filter(n => (n.date || getTodayDateKey()) < targetDate && n.text && n.text.trim().length > 0)
+          .map(n => n.date || getTodayDateKey())
+      )).sort().reverse();
+
+      if (pastDates.length > 0) {
+        const latestDate = pastDates[0];
+        const notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === latestDate && n.text && n.text.trim().length > 0);
+        return { date: latestDate, notices };
+      }
+      return null;
+    }
+
     function renderAdminEditPanels() {
       const taskContainer = document.getElementById('daily-tasks-editable-list');
       taskContainer.innerHTML = '';
 
       const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey);
 
-      dayTasks.forEach(task => {
-        const row = createTaskEditRow(task.id, task.subject, task.text || '', task.visible);
-        taskContainer.appendChild(row);
-      });
+      if (dayTasks.length > 0) {
+        // 若當前良辰已有編輯或儲存紀錄，載入既有狀態
+        dayTasks.forEach(task => {
+          const row = createTaskEditRow(task.id, task.subject, task.text || '', task.visible);
+          taskContainer.appendChild(row);
+        });
+      } else {
+        // 隔日或尚無紀錄時：預設抓取最近一日有資料的紀錄，並預設為「未顯示」（未打勾）
+        const latestHw = getLatestHistoricalTasks(selectedDateKey);
+        if (latestHw && latestHw.tasks && latestHw.tasks.length > 0) {
+          latestHw.tasks.forEach(task => {
+            // visible 傳入 false，方便老師以模板修改
+            const row = createTaskEditRow('', task.subject, task.text || '', false);
+            taskContainer.appendChild(row);
+          });
+        }
+      }
 
       const noticeContainer = document.getElementById('daily-notices-editable-list');
       noticeContainer.innerHTML = '';
 
       const dayNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey);
 
-      dayNotices.forEach(notice => {
-        const row = createNoticeEditRow(notice.id, notice.category, notice.text || '', notice.visible);
-        noticeContainer.appendChild(row);
-      });
+      if (dayNotices.length > 0) {
+        // 若當前良辰已有紀錄，載入既有狀態
+        dayNotices.forEach(notice => {
+          const row = createNoticeEditRow(notice.id, notice.category, notice.text || '', notice.visible);
+          noticeContainer.appendChild(row);
+        });
+      } else {
+        // 預設抓取最近一日有測驗/物品的紀錄，並預設為「未顯示」（未打勾）
+        const latestNt = getLatestHistoricalNotices(selectedDateKey);
+        if (latestNt && latestNt.notices && latestNt.notices.length > 0) {
+          latestNt.notices.forEach(notice => {
+            const row = createNoticeEditRow('', notice.category, notice.text || '', false);
+            noticeContainer.appendChild(row);
+          });
+        }
+      }
     }
 
     // 5.2 日曆渲染
