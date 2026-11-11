@@ -339,7 +339,6 @@
                 <span>溯源文牘良辰：<span id="morning-source-date" class="font-bold text-[#8c4314]">--</span></span>
                 <span class="mx-2 text-stone-400">|</span>
                 <span>今日點卯良辰：<span id="morning-active-date" class="font-bold text-[#421d05]">--</span></span>
-                <span class="text-stone-400 text-[11px] ml-1">（已自動排除頁碼說明）</span>
               </div>
               <button id="morning-all-submit-btn" class="px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300">
                 ⚡ 全體快速全繳
@@ -1121,19 +1120,18 @@
     function simplifyTaskName(fullText) {
       if (!fullText) return '修煉功課';
       let clean = fullText.trim();
-      clean = clean.replace(/第\s*\d+\s*(至|到|~|-)\s*\d+\s*(頁|課|單元).*/i, '');
-      clean = clean.replace(/第\s*\d+\s*(頁|課|單元).*/i, '');
-      clean = clean.replace(/（.*）|\(.*\)/g, '');
-      clean = clean.replace(/並確實訂正|訂正|抄寫|背誦/g, '');
+      // 僅排除日期標籤（如 [11/10] 或 (11/10) 或 [2026-11-10]），完整保留其餘所有作業說明、單元、頁碼
+      clean = clean.replace(/^\[\d{1,4}[-/.]\d{1,2}([-/.]\d{1,2})?\]\s*/, '');
+      clean = clean.replace(/^\(\d{1,4}[-/.]\d{1,2}([-/.]\d{1,2})?\)\s*/, '');
       clean = clean.trim();
-      return clean.length >= 2 ? clean : fullText.slice(0, 8);
+      return clean.length > 0 ? clean : fullText;
     }
 
-    function getPreviousHomeworkData() {
-      const today = morningSelectedDateKey || getTodayDateKey();
+    function getPreviousHomeworkData(referenceDate) {
+      const target = referenceDate || morningSelectedDateKey || getTodayDateKey();
       const allDatesWithTasks = Array.from(new Set(
         (appState.dailyTasks || [])
-          .filter(t => t.text && t.text.trim().length > 0 && (t.date || getTodayDateKey()) < today)
+          .filter(t => t.text && t.text.trim().length > 0 && t.visible && (t.date || getTodayDateKey()) < target)
           .map(t => t.date || getTodayDateKey())
       )).sort().reverse();
 
@@ -1144,10 +1142,7 @@
           tasks: (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text.trim())
         };
       }
-      return {
-        date: getPreviousDateKey(1),
-        tasks: (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === getPreviousDateKey(1) && t.visible && t.text.trim())
-      };
+      return null;
     }
 
     function getHomeworkDataForDate(targetDate, onlyVisible = true) {
@@ -1474,10 +1469,11 @@
     function renderMorningCheck() {
       document.getElementById('morning-active-date').textContent = morningSelectedDateKey;
 
-      let hData = getHomeworkDataForDate(morningSelectedDateKey, true);
-      const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
-      if ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) {
-        hData = getPreviousHomeworkData();
+      // 課業繳驗錄所顯示的作業應為前一日（或前一筆有作業記錄的資料），而非檢視當日的作業
+      let hData = getPreviousHomeworkData(morningSelectedDateKey);
+      if (!hData || !hData.tasks || hData.tasks.length === 0) {
+        // 若該良辰之前尚未有任何歷史作業紀錄（如初次啟用第一天），則退回使用當日作業
+        hData = getHomeworkDataForDate(morningSelectedDateKey, true);
       }
 
       document.getElementById('morning-source-date').textContent = hData.date || '無前置文牘';
@@ -2955,9 +2951,11 @@
       });
 
       document.getElementById('morning-all-submit-btn').addEventListener('click', () => {
-        const hData = getHomeworkDataForDate(morningSelectedDateKey, true);
-        const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
-        const effectiveData = ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) ? getPreviousHomeworkData() : hData;
+        let hData = getPreviousHomeworkData(morningSelectedDateKey);
+        if (!hData || !hData.tasks || hData.tasks.length === 0) {
+          hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+        }
+        const effectiveData = hData;
 
         const items = ['📜 聯絡簿', ...effectiveData.tasks.map(t => simplifyTaskName(t.text))];
         if (!appState.morningRecords) appState.morningRecords = {};
@@ -2982,9 +2980,11 @@
 
       document.getElementById('morning-upload-sync-btn').addEventListener('click', () => {
         checkAdminAction(() => {
-          const hData = getHomeworkDataForDate(morningSelectedDateKey, true);
-          const isPastOrToday = morningSelectedDateKey <= getTodayDateKey();
-          const effectiveData = ((!hData.tasks || hData.tasks.length === 0) && isPastOrToday) ? getPreviousHomeworkData() : hData;
+          let hData = getPreviousHomeworkData(morningSelectedDateKey);
+          if (!hData || !hData.tasks || hData.tasks.length === 0) {
+            hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+          }
+          const effectiveData = hData;
 
           const dayRecords = appState.morningRecords[morningSelectedDateKey] || {};
           let syncCount = 0;
