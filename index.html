@@ -212,7 +212,6 @@
             <!-- 當前顯示日期標記 -->
             <div class="mt-2 text-xs font-semibold text-stone-600 flex items-center justify-between">
               <span>📅 曆法良辰：<span id="current-board-date" class="font-bold text-[#8c4314]">載入中...</span></span>
-              <span id="prefill-notice-tag" class="hidden text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[11px] border border-amber-200">💡 預載最新歷史存檔</span>
             </div>
 
             <!-- 作業清冊顯示看板容器 -->
@@ -264,10 +263,6 @@
             <button id="add-daily-task-btn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#7a3e14] text-[#ffdca8] hover:bg-[#944e1c] transition shadow">
               + 新增作業
             </button>
-          </div>
-
-          <div id="task-prefill-banner" class="hidden bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-xs text-amber-900 flex items-center space-x-2">
-            <span>💡</span> <span>此日尚未設定專屬作業，已自動帶入最新一次存檔內容，方便快速編修！</span>
           </div>
 
           <div id="daily-tasks-editable-list" class="space-y-2.5">
@@ -719,12 +714,56 @@
         <button id="close-student-realm-btn" class="text-stone-400 hover:text-stone-700 text-lg font-bold">✕</button>
       </div>
 
-      <div class="text-xs text-stone-600">
-        當前累計總修為：<span id="student-realm-modal-exp" class="font-bold text-[#8c4314]">0</span> EXP
+      <div class="flex items-center justify-between text-xs font-bold text-stone-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+        <span>累積修為功力：<span id="student-realm-modal-exp" class="text-[#8c4314] text-base font-black">0</span> EXP</span>
       </div>
 
-      <div id="student-realm-history-list" class="space-y-2 flex-1 overflow-y-auto pr-1">
-        <!-- 注入各境界達成時間與排名 -->
+      <div id="student-realm-history-list" class="space-y-2 overflow-y-auto flex-1 pr-1">
+        <!-- 動態歷程 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 2.5：作業轉入修煉篇章與課業繳驗良辰設定彈窗 (Transfer Chapter Modal) -->
+  <div id="transfer-chapter-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-parchment-card border-3 border-[#caa455] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b-2 border-amber-200 pb-3">
+        <h3 class="text-xl font-bold font-wuxia text-[#522508] flex items-center space-x-2">
+          <span>📥</span> <span>排定課業繳驗錄檢核良辰</span>
+        </h3>
+        <button id="close-transfer-modal-btn" class="text-stone-400 hover:text-stone-700 text-lg font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200 space-y-1.5">
+          <div class="text-stone-600">
+            <span>指派作業良辰：</span>
+            <span id="transfer-modal-assign-date" class="font-bold text-[#8c4314]">--</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <label class="font-bold text-stone-800">課業繳驗錄檢核良辰：</label>
+            <input type="date" id="transfer-target-check-date" class="p-1.5 rounded-lg border-2 border-amber-400 bg-white font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs">
+          </div>
+          <p class="text-[11px] text-amber-900/80 leading-relaxed">
+            💡 系統已自動預設（平日預設為翌日，週五指派則自動預設為下週一）。排定後，該作業僅會在指定的檢核良辰出現，其餘空白日期將不再被套用！
+          </p>
+        </div>
+
+        <div>
+          <span class="font-bold text-stone-700 block mb-1.5">即將轉入篇章之作業項目（僅限已勾選顯示者）：</span>
+          <div id="transfer-tasks-preview-list" class="max-h-40 overflow-y-auto space-y-1.5 p-2.5 rounded-xl border border-amber-200 bg-white">
+            <!-- 預覽項目 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-amber-200">
+        <button id="transfer-modal-cancel-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-stone-200 hover:bg-stone-300 text-stone-700">
+          取消
+        </button>
+        <button id="transfer-modal-confirm-btn" class="px-5 py-2 rounded-lg text-xs font-bold bg-[#6e1e14] text-[#ffd699] hover:bg-[#87271b] shadow-md">
+          確認排定並轉入篇章
+        </button>
       </div>
     </div>
   </div>
@@ -847,19 +886,19 @@
     // 2. 初始修煉資料庫與典籍配置 (僅在無任何歷史紀錄時作為種子資料)
     // ==========================================
     const DEFAULT_STUDENTS = [
-      { id: 's1', number: 1, name: '令狐沖', exp: 6 },
-      { id: 's2', number: 2, name: '黃蓉', exp: 18 },
-      { id: 's3', number: 3, name: '郭靖', exp: 0 },
-      { id: 's4', number: 4, name: '陸雪琪', exp: 10 },
-      { id: 's5', number: 5, name: '張小凡', exp: 0 }
+      { id: 's1', number: 1, name: '育潤', exp: 0 },
+      { id: 's2', number: 2, name: '晉龍', exp: 0 },
+      { id: 's3', number: 3, name: '吳庭', exp: 0 },
+      { id: 's4', number: 4, name: '宸瑀', exp: 0 },
+      { id: 's5', number: 5, name: '安琦', exp: 0 },
+      { id: 's6', number: 6, name: '宇欣', exp: 0 }
     ];
 
-    // 依序：國語(紅)、數學(橙)、綜合(黃)、閱讀(綠)、海洋(青)、資訊(靛)、其他(紫)
     const DEFAULT_SUBJECTS = [
-      { id: 'sub_chi', name: '國語', icon: '📜', chapters: ['國習第一課', '國甲第一課', '國乙第一課', '國習第二課'] },
-      { id: 'sub_mat', name: '數學', icon: '📐', chapters: ['數習第1單元', '數練第1單元', '數學作第2單元'] },
+      { id: 'sub_chi', name: '國語', icon: '📜', chapters: ['國甲第40~47頁', '語詞解釋(七)'] },
+      { id: 'sub_mat', name: '數學', icon: '📐', chapters: ['數習第52~53頁', '數習第54~55頁'] },
       { id: 'sub_syn', name: '綜合', icon: '🧭', chapters: ['綜合活動第一單元', '自主探索學習單'] },
-      { id: 'sub_rea', name: '閱讀', icon: '📖', chapters: ['成語故事週記', '晨讀心得短札'] },
+      { id: 'sub_rea', name: '閱讀', icon: '📖', chapters: ['閱讀第24~25頁', '閱讀學習單'] },
       { id: 'sub_ocn', name: '海洋', icon: '🌊', chapters: ['臺灣海洋生態踏查', '洋流與氣候手冊'] },
       { id: 'sub_inf', name: '資訊', icon: '💻', chapters: ['打字運指修行', '程式積木第一關'] },
       { id: 'sub_oth', name: '其他', icon: '🎨', chapters: ['書法字帖練習', '同門生活省思錄'] }
@@ -867,12 +906,6 @@
 
     function getTodayDateKey() {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function getPreviousDateKey(daysAgo = 1) {
-      const d = new Date();
-      d.setDate(d.getDate() - daysAgo);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
@@ -919,29 +952,33 @@
     let gradingCalMonth = new Date().getMonth();
     let activeEditingSubjectId = null;
 
-    // 基礎骨架（若本機或雲端完全無紀錄時才會採用預設值）
     let appState = {
       students: DEFAULT_STUDENTS,
       subjects: DEFAULT_SUBJECTS,
       currentFont: 'kai',
       currentSize: 'lg',
       wanXiangStartDate: '',
-      dailyTasks: [
-        { id: 'dt1', date: getPreviousDateKey(1), subject: '國語', text: '國語習作第 42 至 45 頁並確實訂正', visible: true },
-        { id: 'dt2', date: getPreviousDateKey(1), subject: '數學', text: '數學習作第 38 頁（完成第四單元練習）', visible: true },
-        { id: 'dt3', date: getPreviousDateKey(1), subject: '綜合', text: '完成自主探索學習單第一部分', visible: true },
-        { id: 'dt4', date: getTodayDateKey(), subject: '國語', text: '甲本生字第 5 課書寫完整', visible: true },
-        { id: 'dt5', date: getTodayDateKey(), subject: '數學', text: '數練第 22 頁算式工整', visible: true }
-      ],
-      dailyNotices: [
-        { id: 'dn1', date: getPreviousDateKey(1), category: '測驗', text: '明天考國語第一課聽寫', visible: true },
-        { id: 'dn2', date: getPreviousDateKey(1), category: '物品', text: '攜帶水彩用具及調色盤', visible: true },
-        { id: 'dn3', date: getTodayDateKey(), category: '測驗', text: '明天考數學第 2 單元隨堂卷', visible: true },
-        { id: 'dn4', date: getTodayDateKey(), category: '其他', text: '繳回流感疫苗意願調查表', visible: true }
-      ],
+      dailyTasks: [],
+      dailyNotices: [],
       morningRecords: {},
-      records: []
+      records: [],
+      homeworkCheckDateMap: {}, // 記錄：{ [checkDate]: homeworkAssignDate }
+      chapterMeta: {} // 記錄篇章的檢核良辰：{ [chapTitle]: { checkDate, assignDate } }
     };
+
+    // 自動清理歷史測試遺留之幽靈暫存（11/10 啟用前之誤留草稿）
+    function sanitizeAppState() {
+      if (appState.morningRecords) {
+        delete appState.morningRecords['2026-11-09'];
+        delete appState.morningRecords['2026-11-08'];
+      }
+      if (Array.isArray(appState.dailyTasks)) {
+        appState.dailyTasks = appState.dailyTasks.filter(t => !t.date || t.date >= '2026-11-10');
+      }
+      if (Array.isArray(appState.dailyNotices)) {
+        appState.dailyNotices = appState.dailyNotices.filter(n => !n.date || n.date >= '2026-11-10');
+      }
+    }
 
     // 關鍵防覆蓋機制：頁面載入時優先自 localStorage 恢復現有運作資料
     try {
@@ -949,7 +986,6 @@
       if (localCached) {
         const parsed = JSON.parse(localCached);
         if (parsed && typeof parsed === 'object') {
-          // 深度合併，確保更新 HTML 程式碼上傳至 GitHub 時，用戶資料不受任何影響
           if (Array.isArray(parsed.students)) appState.students = parsed.students;
           if (Array.isArray(parsed.subjects)) appState.subjects = parsed.subjects;
           if (Array.isArray(parsed.dailyTasks)) appState.dailyTasks = parsed.dailyTasks;
@@ -961,6 +997,7 @@
           if (typeof parsed.wanXiangStartDate === 'string') appState.wanXiangStartDate = parsed.wanXiangStartDate;
         }
       }
+      sanitizeAppState();
     } catch (e) {
       console.warn("讀取本地歷史快取提示:", e);
     }
@@ -994,7 +1031,7 @@
       }
     }
 
-    // 啟動 Firebase 即時雙向監聽 (防覆蓋：若雲端已有資料，永遠以雲端最新紀錄為主)
+    // 啟動 Firebase 即時雙向監聽
     if (isFirebaseReady && cloudDocRef) {
       cloudDocRef.onSnapshot((doc) => {
         if (doc && doc.exists) {
@@ -1011,6 +1048,7 @@
             if (cloudState.currentSize) appState.currentSize = cloudState.currentSize;
             if (typeof cloudState.wanXiangStartDate === 'string') appState.wanXiangStartDate = cloudState.wanXiangStartDate;
 
+            sanitizeAppState();
             localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
             renderAll();
             const statusEl = document.getElementById('cloud-sync-status');
@@ -1020,7 +1058,6 @@
             }
           }
         } else {
-          // 僅在雲端完全為空文件時，才首次把現有本機資料推上雲端做初始建檔
           persistState(true);
         }
       }, (error) => {
@@ -1049,15 +1086,18 @@
       let count = 0;
       const allDates = Object.keys(appState.morningRecords || {});
       allDates.forEach(date => {
-        const hData = getHomeworkDataForDate(date, true);
-        const notices = (appState.dailyNotices || []).filter(n => (n.date || date) === date && n.visible && n.text && n.text.trim().length > 0);
-        const hasContent = (hData && hData.tasks && hData.tasks.length > 0) || (notices.length > 0);
-        
-        // 若當日無作業且無攜帶物品/測驗，不繳交聯絡簿，不計入功德圓滿
-        if (!hasContent) return;
+        const hData = getPreviousHomeworkData(date);
+        const hasTasks = hData && hData.tasks && hData.tasks.length > 0;
+        const hasNotices = hData && hData.notices && hData.notices.length > 0;
 
-        const items = ['📜 聯絡簿', ...(hData ? hData.tasks.map(t => simplifyTaskName(t.text)) : [])];
-        if (items.length === 0) return;
+        if (!hasTasks && !hasNotices) return;
+
+        const items = ['📜 聯絡簿'];
+        if (hasTasks) items.push(...hData.tasks.map(t => simplifyTaskName(t.text)));
+        if (hasNotices) {
+          const carryingItems = hData.notices.filter(n => n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
+          items.push(...carryingItems);
+        }
 
         const stMap = appState.morningRecords[date]?.[studentId] || {};
         const isAllDone = items.every(item => stMap[item] === 'punctual' || stMap[item] === 'late');
@@ -1066,7 +1106,13 @@
       return count;
     }
 
-    // 計算「萬象歸宗」累計達成與未達成次數（具備起始日期篩選與今日保護機制）
+    function simplifyTaskName(str) {
+      if (!str) return '';
+      // 僅去除最前端的日期標籤如 [11/10]，完整保留頁碼與詳細說明
+      return str.replace(/^\[\d{1,2}\/\d{1,2}\]\s*/, '').trim();
+    }
+
+    // 計算「萬象歸宗」累計達成與未達成次數
     function calculateWanXiangStats() {
       const todayStr = getTodayDateKey();
       const startDate = appState.wanXiangStartDate || '';
@@ -1075,11 +1121,10 @@
         return { achievedCount: 0, missedCount: 0 };
       }
 
-      // 取得所有有已指派「顯示」作業的日期，以及所有有進行點卯記錄的日期集合
       const candidateDates = new Set();
       (appState.dailyTasks || []).forEach(t => {
-        if (t.visible && t.text && t.text.trim().length > 0) {
-          candidateDates.add(t.date || todayStr);
+        if (t.visible && t.text && t.text.trim().length > 0 && t.date) {
+          candidateDates.add(t.date);
         }
       });
       if (appState.morningRecords) {
@@ -1088,50 +1133,39 @@
       candidateDates.add(todayStr);
 
       const checkDates = Array.from(candidateDates)
-        .filter(d => !startDate || d >= startDate)
+        .filter(d => (!startDate || d >= startDate) && d <= todayStr)
         .sort();
 
       let achievedCount = 0;
       let missedCount = 0;
 
       checkDates.forEach(dateStr => {
-        // 取得該點卯良辰對應之作業與學用品（與 renderMorningCheck 完全一致）
-        let hData = getPreviousHomeworkData(dateStr);
-        if (!hData || !hData.tasks || hData.tasks.length === 0) {
-          hData = getHomeworkDataForDate(dateStr, true);
-        }
-
+        const hData = getPreviousHomeworkData(dateStr);
         const hasTasks = hData && hData.tasks && hData.tasks.length > 0;
         const hasNotices = hData && hData.notices && hData.notices.length > 0;
 
-        // 若該日無任何指定作業與學用品，不繳聯絡簿，不納入統計
         if (!hasTasks && !hasNotices) return;
 
         const items = ['📜 聯絡簿'];
         if (hasTasks) {
-          items.push(...hData.tasks.filter(t => t.visible).map(t => simplifyTaskName(t.text)));
+          items.push(...hData.tasks.map(t => simplifyTaskName(t.text)));
         }
         if (hasNotices) {
-          const carryingItems = hData.notices.filter(n => n.visible && n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
+          const carryingItems = hData.notices.filter(n => n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
           items.push(...carryingItems);
         }
 
-        if (items.length === 0) return;
-
-        const dayRecords = appState.morningRecords ? appState.morningRecords[dateStr] : null;
-
-        const isWanXiang = !!dayRecords && appState.students.every(st => {
-          const stMap = dayRecords[st.id] || {};
-          return items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
+        const dayRec = appState.morningRecords ? appState.morningRecords[dateStr] : null;
+        let allCompleted = items.length > 0 && appState.students.every(st => {
+          const stMap = dayRec ? dayRec[st.id] : null;
+          return stMap && items.every(it => stMap[it] === 'punctual' || stMap[it] === 'late');
         });
 
-        if (isWanXiang) {
+        if (allCompleted) {
           achievedCount++;
         } else {
-          // 若為今日且尚未全部收齊，屬於當日收繳進行中，絕不提前記為未達成！
-          if (dateStr === todayStr) {
-            // 今日進行中，不計入未達成
-          } else {
+          // 若為今日且尚未全部繳齊，視為正在進行中，不計入未達成
+          if (dateStr < todayStr) {
             missedCount++;
           }
         }
@@ -1140,43 +1174,79 @@
       return { achievedCount, missedCount };
     }
 
-    function simplifyTaskName(fullText) {
-      if (!fullText) return '修煉功課';
-      let clean = fullText.trim();
-      // 僅排除日期標籤（如 [11/10] 或 (11/10) 或 [2026-11-10]），完整保留其餘所有作業說明、單元、頁碼
-      clean = clean.replace(/^\[\d{1,4}[-/.]\d{1,2}([-/.]\d{1,2})?\]\s*/, '');
-      clean = clean.replace(/^\(\d{1,4}[-/.]\d{1,2}([-/.]\d{1,2})?\)\s*/, '');
-      clean = clean.trim();
-      return clean.length > 0 ? clean : fullText;
+    // 計算下一個教學日良辰（平日為隔天，週五與週六為下週一）
+    function getNextSchoolDay(dateStr) {
+      if (!dateStr) dateStr = getTodayDateKey();
+      const parts = dateStr.split('-').map(Number);
+      const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+      const dayOfWeek = dt.getDay(); // 0 是週日, 5 是週五, 6 是週六
+      let addDays = 1;
+      if (dayOfWeek === 5) {
+        addDays = 3; // 週五 -> 週一
+      } else if (dayOfWeek === 6) {
+        addDays = 2; // 週六 -> 週一
+      }
+      const nextDt = new Date(dt.getTime() + addDays * 86400000);
+      return `${nextDt.getFullYear()}-${String(nextDt.getMonth() + 1).padStart(2, '0')}-${String(nextDt.getDate()).padStart(2, '0')}`;
     }
 
+    // 精準溯源前置作業：嚴格僅核對排定於 referenceDate 檢核之作業，不再無限向後套用
     function getPreviousHomeworkData(referenceDate) {
       const target = referenceDate || morningSelectedDateKey || getTodayDateKey();
-      const allDatesWithTasks = Array.from(new Set(
-        (appState.dailyTasks || [])
-          .filter(t => t.text && t.text.trim().length > 0 && t.visible && (t.date || getTodayDateKey()) < target)
-          .map(t => t.date || getTodayDateKey())
-      )).sort().reverse();
 
-      if (allDatesWithTasks.length > 0) {
-        const targetDate = allDatesWithTasks[0];
-        const tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text.trim());
-        const notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === targetDate && n.visible && n.text.trim());
-        return {
-          date: targetDate,
-          tasks,
-          notices
-        };
+      // 1. 優先查詢是否有明確指派於 target 檢核的指派日
+      let assignedHwDate = null;
+      if (appState.homeworkCheckDateMap && appState.homeworkCheckDateMap[target]) {
+        assignedHwDate = appState.homeworkCheckDateMap[target];
       }
-      return null;
+
+      // 2. 若無明確映射，檢查是否有作業的自動預設教學日 (getNextSchoolDay) 剛好等於 target
+      if (!assignedHwDate) {
+        const candidateDates = Array.from(new Set(
+          (appState.dailyTasks || [])
+            .filter(t => t.text && t.text.trim().length > 0 && t.visible && (t.date || getTodayDateKey()) < target)
+            .map(t => t.date || getTodayDateKey())
+        )).sort().reverse();
+
+        for (let cd of candidateDates) {
+          // 若候選日已另有排定其他檢核日，則不自動匹配給 target
+          const customCheckDate = Object.keys(appState.homeworkCheckDateMap || {}).find(k => appState.homeworkCheckDateMap[k] === cd);
+          if (customCheckDate) {
+            if (customCheckDate === target) {
+              assignedHwDate = cd;
+              break;
+            }
+          } else {
+            // 沒有自訂檢核日時，僅比對是否為預設翌日/下週一
+            if (getNextSchoolDay(cd) === target) {
+              assignedHwDate = cd;
+              break;
+            }
+          }
+        }
+      }
+
+      if (assignedHwDate && assignedHwDate < target) {
+        const tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === assignedHwDate && t.visible && t.text.trim());
+        const notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === assignedHwDate && n.visible && n.text.trim());
+        if (tasks.length > 0 || notices.length > 0) {
+          return {
+            date: assignedHwDate,
+            tasks,
+            notices
+          };
+        }
+      }
+
+      return { date: null, tasks: [], notices: [] };
     }
 
     function getHomeworkDataForDate(targetDate, onlyVisible = true) {
       let tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate);
       let notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === targetDate);
       if (onlyVisible) {
-        tasks = tasks.filter(t => t.visible && t.text.trim().length > 0);
-        notices = notices.filter(n => n.visible && n.text.trim().length > 0);
+        tasks = tasks.filter(t => t.visible && t.text && t.text.trim().length > 0);
+        notices = notices.filter(n => n.visible && n.text && n.text.trim().length > 0);
       }
       return { date: targetDate, tasks, notices };
     }
@@ -1250,30 +1320,12 @@
     // 5. 渲染各模組視圖
     // ==========================================
 
-    // 5.1 今日修煉榜
+    // 5.1 今日修煉榜 (徹底廢除跨日期預載，空白日即為 0 項)
     function renderDailyHomework() {
       document.getElementById('current-board-date').textContent = selectedDateKey;
 
-      let tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible);
-      let notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey && n.visible);
-
-      const hasExactData = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === selectedDateKey) ||
-                           (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === selectedDateKey);
-
-      const tagEl = document.getElementById('prefill-notice-tag');
-      if (!hasExactData) {
-        if (tagEl) tagEl.classList.remove('hidden');
-        const allTaskDates = Array.from(new Set((appState.dailyTasks || []).map(t => t.date || getTodayDateKey()))).sort().reverse();
-        if (allTaskDates.length > 0) {
-          tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === allTaskDates[0] && t.visible);
-        }
-        const allNoticeDates = Array.from(new Set((appState.dailyNotices || []).map(n => n.date || getTodayDateKey()))).sort().reverse();
-        if (allNoticeDates.length > 0) {
-          notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === allNoticeDates[0] && n.visible);
-        }
-      } else {
-        if (tagEl) tagEl.classList.add('hidden');
-      }
+      const tasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim().length > 0);
+      const notices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey && n.visible && n.text && n.text.trim().length > 0);
 
       const boardList = document.getElementById('daily-board-list');
       boardList.innerHTML = '';
@@ -1323,6 +1375,13 @@
 
       document.getElementById('daily-count-badge').textContent = `共 ${totalCount} 項`;
 
+      if (totalCount === 0) {
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'py-12 text-center text-stone-400 font-bold text-sm bg-amber-50/20 rounded-xl border border-dashed border-amber-200 tracking-wider';
+        emptyEl.textContent = '🍃 本日尚無指派修煉作業與備忘事項。';
+        boardList.appendChild(emptyEl);
+      }
+
       renderAdminEditPanels();
       updateFontAndSizeButtonsUI();
     }
@@ -1347,7 +1406,6 @@
       });
     }
 
-    // 統一建立作業編輯列（含 ▲ / ▼ 排序控制）
     function createTaskEditRow(taskId = '', subject = '國語', text = '', visible = true) {
       const row = document.createElement('div');
       row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
@@ -1358,7 +1416,6 @@
       ).join('');
 
       row.innerHTML = `
-        <!-- 順序調整按鈕 -->
         <div class="flex items-center space-x-0.5 shrink-0 bg-white border border-amber-300 rounded px-1.5 py-1 shadow-xs">
           <button type="button" class="move-up-task-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往上移一格">▲</button>
           <button type="button" class="move-down-task-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往下移一格">▼</button>
@@ -1376,14 +1433,12 @@
       return row;
     }
 
-    // 統一建立測驗與備忘編輯列（含 ▲ / ▼ 排序控制）
     function createNoticeEditRow(noticeId = '', category = '測驗', text = '', visible = true) {
       const row = document.createElement('div');
       row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
       row.setAttribute('data-notice-id', noticeId || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
 
       row.innerHTML = `
-        <!-- 順序調整按鈕 -->
         <div class="flex items-center space-x-0.5 shrink-0 bg-white border border-amber-300 rounded px-1.5 py-1 shadow-xs">
           <button type="button" class="move-up-notice-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往上移一格">▲</button>
           <button type="button" class="move-down-notice-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往下移一格">▼</button>
@@ -1407,21 +1462,7 @@
       const taskContainer = document.getElementById('daily-tasks-editable-list');
       taskContainer.innerHTML = '';
 
-      let dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey);
-      let isTaskPrefilled = false;
-      if (dayTasks.length === 0) {
-        const allTaskDates = Array.from(new Set((appState.dailyTasks || []).map(t => t.date || getTodayDateKey()))).sort().reverse();
-        if (allTaskDates.length > 0) {
-          dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === allTaskDates[0]);
-          isTaskPrefilled = true;
-        }
-      }
-
-      const taskBanner = document.getElementById('task-prefill-banner');
-      if (taskBanner) {
-        if (isTaskPrefilled && dayTasks.length > 0) taskBanner.classList.remove('hidden');
-        else taskBanner.classList.add('hidden');
-      }
+      const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey);
 
       dayTasks.forEach(task => {
         const row = createTaskEditRow(task.id, task.subject, task.text || '', task.visible);
@@ -1431,13 +1472,7 @@
       const noticeContainer = document.getElementById('daily-notices-editable-list');
       noticeContainer.innerHTML = '';
 
-      let dayNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey);
-      if (dayNotices.length === 0) {
-        const allNoticeDates = Array.from(new Set((appState.dailyNotices || []).map(n => n.date || getTodayDateKey()))).sort().reverse();
-        if (allNoticeDates.length > 0) {
-          dayNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === allNoticeDates[0]);
-        }
-      }
+      const dayNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) === selectedDateKey);
 
       dayNotices.forEach(notice => {
         const row = createNoticeEditRow(notice.id, notice.category, notice.text || '', notice.visible);
@@ -1466,8 +1501,8 @@
         const cell = document.createElement('button');
         cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200';
 
-        const hasRecord = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === dStr && t.visible && t.text.trim()) ||
-                          (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === dStr && n.visible && n.text.trim());
+        const hasRecord = (appState.dailyTasks || []).some(t => (t.date || getTodayDateKey()) === dStr && t.visible && t.text && t.text.trim().length > 0) ||
+                          (appState.dailyNotices || []).some(n => (n.date || getTodayDateKey()) === dStr && n.visible && n.text && n.text.trim().length > 0);
 
         if (dStr === selectedDateKey) {
           cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
@@ -1495,24 +1530,17 @@
       }
     }
 
-    // 5.3 晨曦點卯閣（課業繳驗錄）
+    // 5.3 晨曦點卯閣（課業繳驗錄，嚴格僅檢視前置作業）
     function renderMorningCheck() {
       document.getElementById('morning-active-date').textContent = morningSelectedDateKey;
 
-      // 課業繳驗錄所顯示的作業應為前一日（或前一筆有作業記錄的資料），而非檢視當日的作業
-      let hData = getPreviousHomeworkData(morningSelectedDateKey);
-      if (!hData || !hData.tasks || hData.tasks.length === 0) {
-        // 若該良辰之前尚未有任何歷史作業紀錄（如初次啟用第一天），則退回使用當日作業
-        hData = getHomeworkDataForDate(morningSelectedDateKey, true);
-      }
-
+      const hData = getPreviousHomeworkData(morningSelectedDateKey);
       document.getElementById('morning-source-date').textContent = hData.date || '無前置文牘';
 
       const hasTasks = hData && hData.tasks && hData.tasks.length > 0;
       const hasNotices = hData && hData.notices && hData.notices.length > 0;
       const hasAnyWorkOrItem = hasTasks || hasNotices;
 
-      // 若當日無作業或攜帶物品時，則當日不繳交聯絡簿，聯絡簿項目則不予顯示
       let items = [];
       if (hasAnyWorkOrItem) {
         items.push('📜 聯絡簿');
@@ -1520,7 +1548,6 @@
           items.push(...hData.tasks.map(t => simplifyTaskName(t.text)));
         }
         if (hasNotices) {
-          // 若有攜帶物品或測驗，一併納入繳驗核對
           const carryingItems = hData.notices.filter(n => n.category === '物品').map(n => '🎒 ' + simplifyTaskName(n.text));
           items.push(...carryingItems);
         }
@@ -1556,11 +1583,10 @@
       tbody.className = 'divide-y divide-amber-100';
 
       if (!hasItems) {
-        // 當日無作業或攜帶物品時的提示行
         const trEmpty = document.createElement('tr');
         trEmpty.innerHTML = `
           <td colspan="${students.length + 2}" class="py-8 text-center text-stone-400 font-bold text-xs bg-amber-50/20 tracking-wider">
-            🍃 當日無指定課業與攜帶物品，免繳聯絡簿與點卯
+            🍃 當日無前置課業與攜帶物品，免繳聯絡簿與點卯
           </td>
         `;
         tbody.appendChild(trEmpty);
@@ -1596,7 +1622,6 @@
             </td>`;
           });
 
-          // 全閣繳齊狀態判斷
           if (!hasStudents) {
             rowHtml += `<td class="py-2 px-2 text-stone-400 font-semibold text-[11px]">—</td>`;
           } else if (itemCompletedByAll) {
@@ -1616,7 +1641,6 @@
       let footHtml = `<td class="py-2.5 px-3 border-r border-amber-200 text-left text-amber-950 font-bold">弟子繳齊狀態</td>`;
 
       if (!hasItems || !hasStudents) {
-        // 如當日無作業或無弟子時，弟子繳齊狀況及全體繳齊狀況則不予判斷（不自動判定功德圓滿或萬象歸宗）
         students.forEach(() => {
           footHtml += `<td class="py-2 px-1 border-r border-amber-200 text-stone-400 font-normal text-xs">—</td>`;
         });
@@ -1665,14 +1689,12 @@
 
       renderMorningCalendar();
 
-      // 更新萬象歸宗達成與未達成累計次數
       const stats = calculateWanXiangStats();
       const achEl = document.getElementById('wanxiang-achieved-count');
       const misEl = document.getElementById('wanxiang-missed-count');
       if (achEl) achEl.textContent = stats.achievedCount;
       if (misEl) misEl.textContent = stats.missedCount;
 
-      // 填入起始良辰選取器數值
       const startInp = document.getElementById('wanxiang-start-date-inp');
       if (startInp) {
         startInp.value = appState.wanXiangStartDate || '';
@@ -1699,7 +1721,33 @@
         const cell = document.createElement('button');
         cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200';
 
-        const hasRecord = appState.morningRecords && appState.morningRecords[dStr] && Object.keys(appState.morningRecords[dStr]).length > 0;
+        const prevHData = getPreviousHomeworkData(dStr);
+        const hasWorkToCheck = prevHData && ((prevHData.tasks && prevHData.tasks.length > 0) || (prevHData.notices && prevHData.notices.length > 0));
+        
+        // 嚴格檢測該日是否「真正有弟子已完成點卯」（排除全為 none 或空物件）
+        const dayRec = appState.morningRecords ? appState.morningRecords[dStr] : null;
+        const hasActualChecked = !!dayRec && Object.values(dayRec).some(stMap => 
+          stMap && typeof stMap === 'object' && Object.values(stMap).some(status => status === 'punctual' || status === 'late')
+        );
+
+        const todayStr = getTodayDateKey();
+        const isPast = dStr < todayStr;
+        const isToday = dStr === todayStr;
+        const isBeforeStart = appState.wanXiangStartDate && dStr < appState.wanXiangStartDate;
+
+        // 點卯綠點標註規則：
+        // 1. 若該日早於起始統計良辰，嚴格不標註
+        // 2. 過去日期（< 今日）：必須確實「有完成點卯紀錄」才標註綠點（過去未點卯之天數絕不標註）
+        // 3. 今日（=== 今日）：有前置作業需檢核 或 已經開始點卯，則標註
+        // 4. 未來日期（> 今日）：嚴格不標註
+        let hasRecord = false;
+        if (!isBeforeStart) {
+          if (isToday) {
+            hasRecord = hasWorkToCheck || hasActualChecked;
+          } else if (isPast) {
+            hasRecord = hasActualChecked;
+          }
+        }
 
         if (dStr === morningSelectedDateKey) {
           cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
@@ -2052,7 +2100,6 @@
       const tasksSel = document.getElementById('grading-date-tasks-sel');
       if (!tasksSel) return;
 
-      // 嚴格僅列出有勾選「顯示」且有內容的作業
       const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text && t.text.trim().length > 0);
 
       if (dayTasks.length === 0) {
@@ -2361,15 +2408,41 @@
       chapters.forEach((chap) => {
         const badge = document.createElement('div');
         badge.className = 'px-3 py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-xs font-bold text-stone-800 flex items-center space-x-2 shadow-2xs hover:bg-amber-200/80 transition';
+        
+        const meta = appState.chapterMeta ? appState.chapterMeta[chap] : null;
+        const checkDateBadge = meta && meta.checkDate 
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 font-semibold" title="排定課業繳驗錄檢核日">📅 檢核: ${meta.checkDate}</span>`
+          : '';
+
         badge.innerHTML = `
           <span>${chap}</span>
+          ${checkDateBadge}
+          <button class="set-chapter-checkdate-btn text-stone-500 hover:text-amber-800 font-bold ml-1" title="設定此篇章之課業繳驗良辰" data-chapter="${chap.replace(/"/g, '&quot;')}">📅</button>
           <button class="del-chapter-btn text-stone-400 hover:text-rose-700 font-bold ml-1" title="刪除此篇章" data-chapter="${chap.replace(/"/g, '&quot;')}">×</button>
           <button class="rename-chapter-btn text-stone-400 hover:text-amber-800 font-bold ml-1" title="更名此篇章" data-chapter="${chap.replace(/"/g, '&quot;')}">✏️</button>
         `;
         container.appendChild(badge);
       });
 
-      // 刪除篇章 (×)
+      container.querySelectorAll('.set-chapter-checkdate-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          checkAdminAction(() => {
+            const chap = btn.getAttribute('data-chapter');
+            const curCheckDate = appState.chapterMeta?.[chap]?.checkDate || getNextSchoolDay(getTodayDateKey());
+            showPromptModal(`設定【${chap}】課業繳驗錄檢核良辰`, curCheckDate, (newDate) => {
+              if (newDate && newDate.trim()) {
+                if (!appState.chapterMeta) appState.chapterMeta = {};
+                if (!appState.chapterMeta[chap]) appState.chapterMeta[chap] = {};
+                appState.chapterMeta[chap].checkDate = newDate.trim();
+                persistState();
+                renderModalChapterBadges();
+                showToast(`篇章【${chap}】已設定檢核良辰為 ${newDate.trim()}`);
+              }
+            });
+          });
+        });
+      });
+
       container.querySelectorAll('.del-chapter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
@@ -2399,7 +2472,6 @@
         });
       });
 
-      // 更名篇章 (✏️)
       container.querySelectorAll('.rename-chapter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           checkAdminAction(() => {
@@ -2716,21 +2788,19 @@
         checkAdminAction(() => {});
       });
 
-      // 掌門一鍵備份下載按鈕
       document.getElementById('export-backup-btn')?.addEventListener('click', () => {
         checkAdminAction(() => {
           exportStateBackup();
         });
       });
 
-      // 掌門備份恢復上傳 input 監聽
       document.getElementById('import-backup-file')?.addEventListener('change', (e) => {
         checkAdminAction(() => {
           const file = e.target.files?.[0];
           if (file) {
             importStateBackup(file);
           }
-          e.target.value = ''; // 重設以允許重複選取相同檔案
+          e.target.value = '';
         });
       });
 
@@ -2825,7 +2895,6 @@
         renderMorningCheck();
       });
 
-      // 萬象歸宗起始日期控制
       document.getElementById('wanxiang-start-date-inp')?.addEventListener('change', (e) => {
         appState.wanXiangStartDate = e.target.value;
         persistState(true);
@@ -2924,55 +2993,51 @@
       document.getElementById('save-daily-tasks-btn').addEventListener('click', () => {
         checkAdminAction(() => {
           const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
-          const updated = [];
+          const newTasks = [];
           rows.forEach(r => {
-            const id = r.getAttribute('data-task-id') || ('dt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
-            const visible = r.querySelector('.task-visible-chk').checked;
-            const subject = r.querySelector('.task-subject-sel').value;
-            const text = r.querySelector('.task-text-inp').value.trim();
+            const id = r.getAttribute('data-task-id');
+            const visible = r.querySelector('.task-visible-chk')?.checked ?? true;
+            const subject = r.querySelector('.task-subject-sel')?.value || '國語';
+            const text = (r.querySelector('.task-text-inp')?.value || '').trim();
             if (text) {
-              updated.push({ id, date: selectedDateKey, subject, text, visible });
+              newTasks.push({ id, subject, text, visible, date: selectedDateKey });
             }
           });
-
-          appState.dailyTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) !== selectedDateKey);
-          appState.dailyTasks.push(...updated);
-
+          appState.dailyTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) !== selectedDateKey).concat(newTasks);
           persistState();
           renderDailyHomework();
           renderCalendar();
+          renderGradingView();
           renderMorningCheck();
-          showToast(`已儲存發布 ${selectedDateKey} 今日作業！`);
+          showToast('今日作業已儲存並同步！');
         });
       });
 
       document.getElementById('save-daily-notices-btn').addEventListener('click', () => {
         checkAdminAction(() => {
           const rows = document.querySelectorAll('#daily-notices-editable-list [data-notice-id]');
-          const updated = [];
+          const newNotices = [];
           rows.forEach(r => {
-            const id = r.getAttribute('data-notice-id') || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
-            const visible = r.querySelector('.notice-visible-chk').checked;
-            const category = r.querySelector('.notice-category-sel').value;
-            const text = r.querySelector('.notice-text-inp').value.trim();
+            const id = r.getAttribute('data-notice-id');
+            const visible = r.querySelector('.notice-visible-chk')?.checked ?? true;
+            const category = r.querySelector('.notice-category-sel')?.value || '測驗';
+            const text = (r.querySelector('.notice-text-inp')?.value || '').trim();
             if (text) {
-              updated.push({ id, date: selectedDateKey, category, text, visible });
+              newNotices.push({ id, category, text, visible, date: selectedDateKey });
             }
           });
-
-          appState.dailyNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) !== selectedDateKey);
-          appState.dailyNotices.push(...updated);
-
+          appState.dailyNotices = (appState.dailyNotices || []).filter(n => (n.date || getTodayDateKey()) !== selectedDateKey).concat(newNotices);
           persistState();
           renderDailyHomework();
           renderCalendar();
-          showToast(`已儲存發布 ${selectedDateKey} 測驗與備忘！`);
+          renderMorningCheck();
+          showToast('明日測驗與攜帶用具已儲存！');
         });
       });
 
+      // 點擊「📥 將今日作業直接轉入修煉篇章」按鈕，彈出檢核良辰月曆選擇視窗
       document.getElementById('convert-to-chapter-btn').addEventListener('click', () => {
         checkAdminAction(() => {
-          // 優先讀取當前編修台上的作業項目，僅擷取有打勾「顯示」且內容非空的作業
           const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
           let targetTasks = [];
 
@@ -2986,7 +3051,6 @@
               }
             });
           } else {
-            // 若編修台尚未展開，以系統中當日「勾選顯示」的作業為準
             targetTasks = (appState.dailyTasks || [])
               .filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim())
               .map(t => ({ subject: t.subject, text: t.text.trim() }));
@@ -2997,41 +3061,98 @@
             return;
           }
 
-          const dObj = new Date(selectedDateKey);
-          const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
-          let count = 0;
+          // 開啟設定彈窗
+          const modal = document.getElementById('transfer-chapter-modal');
+          document.getElementById('transfer-modal-assign-date').textContent = selectedDateKey;
 
-          targetTasks.forEach(task => {
-            let targetSub = (appState.subjects || []).find(s => s.name === task.subject);
-            if (!targetSub) {
-              targetSub = { id: 'sub_' + Date.now(), name: task.subject, icon: '📚', chapters: [] };
-              appState.subjects.push(targetSub);
-            }
-            const chapTitle = `${dateTag} ${task.text}`;
-            if (!targetSub.chapters.includes(chapTitle)) {
-              targetSub.chapters.push(chapTitle);
-              count++;
-            }
-          });
+          // 智慧預設：平日隔天，週五/週六預設下週一
+          const defaultTargetDate = getNextSchoolDay(selectedDateKey);
+          document.getElementById('transfer-target-check-date').value = defaultTargetDate;
 
-          persistState();
-          renderSubjectsView();
-          renderGradingView();
-          showToast(`成功將 ${count} 項已顯示作業轉入修煉篇章！`);
+          const previewList = document.getElementById('transfer-tasks-preview-list');
+          previewList.innerHTML = targetTasks.map((t, idx) => `
+            <div class="flex items-center space-x-2 py-1 px-1.5 rounded bg-amber-50 border border-amber-200">
+              <span class="w-5 h-5 rounded-full bg-amber-200 text-stone-800 flex items-center justify-center font-bold text-[11px]">${idx + 1}</span>
+              <span class="font-bold text-amber-900">[${t.subject}]</span>
+              <span class="text-stone-800 truncate">${t.text}</span>
+            </div>
+          `).join('');
+
+          modal.classList.remove('hidden');
         });
       });
 
-      document.getElementById('morning-all-submit-btn').addEventListener('click', () => {
-        let hData = getPreviousHomeworkData(morningSelectedDateKey);
-        if (!hData || !hData.tasks || hData.tasks.length === 0) {
-          hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+      document.getElementById('close-transfer-modal-btn').addEventListener('click', () => {
+        document.getElementById('transfer-chapter-modal').classList.add('hidden');
+      });
+      document.getElementById('transfer-modal-cancel-btn').addEventListener('click', () => {
+        document.getElementById('transfer-chapter-modal').classList.add('hidden');
+      });
+
+      document.getElementById('transfer-modal-confirm-btn').addEventListener('click', () => {
+        const chosenCheckDate = document.getElementById('transfer-target-check-date').value;
+        if (!chosenCheckDate) {
+          showToast('請選取課業繳驗錄檢核良辰！');
+          return;
         }
-        const effectiveData = hData;
+
+        const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
+        let targetTasks = [];
+        if (rows.length > 0) {
+          rows.forEach(r => {
+            const visible = r.querySelector('.task-visible-chk')?.checked ?? false;
+            const subject = r.querySelector('.task-subject-sel')?.value || '國語';
+            const text = (r.querySelector('.task-text-inp')?.value || '').trim();
+            if (visible && text) {
+              targetTasks.push({ subject, text });
+            }
+          });
+        } else {
+          targetTasks = (appState.dailyTasks || [])
+            .filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim())
+            .map(t => ({ subject: t.subject, text: t.text.trim() }));
+        }
+
+        const dObj = new Date(selectedDateKey);
+        const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
+        let count = 0;
+
+        if (!appState.homeworkCheckDateMap) appState.homeworkCheckDateMap = {};
+        appState.homeworkCheckDateMap[chosenCheckDate] = selectedDateKey;
+
+        if (!appState.chapterMeta) appState.chapterMeta = {};
+
+        targetTasks.forEach(task => {
+          let targetSub = (appState.subjects || []).find(s => s.name === task.subject);
+          if (!targetSub) {
+            targetSub = { id: 'sub_' + Date.now(), name: task.subject, icon: '📚', chapters: [] };
+            appState.subjects.push(targetSub);
+          }
+          const chapTitle = `${dateTag} ${task.text}`;
+          if (!targetSub.chapters.includes(chapTitle)) {
+            targetSub.chapters.push(chapTitle);
+            count++;
+          }
+          appState.chapterMeta[chapTitle] = {
+            checkDate: chosenCheckDate,
+            assignDate: selectedDateKey
+          };
+        });
+
+        persistState();
+        document.getElementById('transfer-chapter-modal').classList.add('hidden');
+        renderSubjectsView();
+        renderGradingView();
+        renderMorningCheck();
+        showToast(`已排定於 ${chosenCheckDate} 課業繳驗錄中核對，並轉入 ${count} 篇章！`);
+      });
+
+      document.getElementById('morning-all-submit-btn').addEventListener('click', () => {
+        const effectiveData = getPreviousHomeworkData(morningSelectedDateKey);
 
         const hasTasks = effectiveData && effectiveData.tasks && effectiveData.tasks.length > 0;
         const hasNotices = effectiveData && effectiveData.notices && effectiveData.notices.length > 0;
 
-        // 防呆：若當日無作業或名冊無弟子，不予執行全繳
         if (!hasTasks && !hasNotices) {
           showToast('當日無作業與攜帶物品，無須全繳！');
           return;
@@ -3069,11 +3190,11 @@
 
       document.getElementById('morning-upload-sync-btn').addEventListener('click', () => {
         checkAdminAction(() => {
-          let hData = getPreviousHomeworkData(morningSelectedDateKey);
-          if (!hData || !hData.tasks || hData.tasks.length === 0) {
-            hData = getHomeworkDataForDate(morningSelectedDateKey, true);
+          const effectiveData = getPreviousHomeworkData(morningSelectedDateKey);
+          if (!effectiveData || !effectiveData.tasks || effectiveData.tasks.length === 0) {
+            showToast('當日無前置指派作業，無須同步！');
+            return;
           }
-          const effectiveData = hData;
 
           const dayRecords = appState.morningRecords[morningSelectedDateKey] || {};
           let syncCount = 0;
