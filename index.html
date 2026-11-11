@@ -1322,6 +1322,62 @@
       });
     }
 
+    // 統一建立作業編輯列（含 ▲ / ▼ 排序控制）
+    function createTaskEditRow(taskId = '', subject = '國語', text = '', visible = true) {
+      const row = document.createElement('div');
+      row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+      row.setAttribute('data-task-id', taskId || ('dt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
+
+      let subOptions = (appState.subjects || []).map(s => 
+        `<option value="${s.name}" ${s.name === subject ? 'selected' : ''}>${s.icon || ''} ${s.name}</option>`
+      ).join('');
+
+      row.innerHTML = `
+        <!-- 順序調整按鈕 -->
+        <div class="flex items-center space-x-0.5 shrink-0 bg-white border border-amber-300 rounded px-1.5 py-1 shadow-xs">
+          <button type="button" class="move-up-task-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往上移一格">▲</button>
+          <button type="button" class="move-down-task-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往下移一格">▼</button>
+        </div>
+        <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+          <input type="checkbox" class="task-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
+          <span>顯示</span>
+        </label>
+        <select class="task-subject-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+          ${subOptions}
+        </select>
+        <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入作業內容..." class="task-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+        <button class="del-task-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+      `;
+      return row;
+    }
+
+    // 統一建立測驗與備忘編輯列（含 ▲ / ▼ 排序控制）
+    function createNoticeEditRow(noticeId = '', category = '測驗', text = '', visible = true) {
+      const row = document.createElement('div');
+      row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
+      row.setAttribute('data-notice-id', noticeId || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
+
+      row.innerHTML = `
+        <!-- 順序調整按鈕 -->
+        <div class="flex items-center space-x-0.5 shrink-0 bg-white border border-amber-300 rounded px-1.5 py-1 shadow-xs">
+          <button type="button" class="move-up-notice-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往上移一格">▲</button>
+          <button type="button" class="move-down-notice-btn text-stone-700 hover:text-amber-900 font-black px-1 hover:bg-amber-100 rounded text-xs transition" title="往下移一格">▼</button>
+        </div>
+        <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
+          <input type="checkbox" class="notice-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
+          <span>顯示</span>
+        </label>
+        <select class="notice-category-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
+          <option value="測驗" ${category === '測驗' ? 'selected' : ''}>測驗</option>
+          <option value="物品" ${category === '物品' ? 'selected' : ''}>物品</option>
+          <option value="其他" ${category === '其他' ? 'selected' : ''}>其他</option>
+        </select>
+        <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入測驗或攜帶用具備忘..." class="notice-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
+        <button class="del-notice-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
+      `;
+      return row;
+    }
+
     function renderAdminEditPanels() {
       const taskContainer = document.getElementById('daily-tasks-editable-list');
       taskContainer.innerHTML = '';
@@ -1343,25 +1399,7 @@
       }
 
       dayTasks.forEach(task => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
-        row.setAttribute('data-task-id', task.id);
-        
-        let subOptions = (appState.subjects || []).map(s => 
-          `<option value="${s.name}" ${s.name === task.subject ? 'selected' : ''}>${s.icon || ''} ${s.name}</option>`
-        ).join('');
-
-        row.innerHTML = `
-          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
-            <input type="checkbox" class="task-visible-chk rounded text-amber-800" ${task.visible ? 'checked' : ''}>
-            <span>顯示</span>
-          </label>
-          <select class="task-subject-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
-            ${subOptions}
-          </select>
-          <input type="text" value="${task.text || ''}" placeholder="輸入作業內容..." class="task-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
-          <button class="del-task-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
-        `;
+        const row = createTaskEditRow(task.id, task.subject, task.text || '', task.visible);
         taskContainer.appendChild(row);
       });
 
@@ -1377,23 +1415,7 @@
       }
 
       dayNotices.forEach(notice => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
-        row.setAttribute('data-notice-id', notice.id);
-
-        row.innerHTML = `
-          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
-            <input type="checkbox" class="notice-visible-chk rounded text-amber-800" ${notice.visible ? 'checked' : ''}>
-            <span>顯示</span>
-          </label>
-          <select class="notice-category-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
-            <option value="測驗" ${notice.category === '測驗' ? 'selected' : ''}>測驗</option>
-            <option value="物品" ${notice.category === '物品' ? 'selected' : ''}>物品</option>
-            <option value="其他" ${notice.category === '其他' ? 'selected' : ''}>其他</option>
-          </select>
-          <input type="text" value="${notice.text || ''}" placeholder="輸入測驗或攜帶用具備忘..." class="notice-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
-          <button class="del-notice-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
-        `;
+        const row = createNoticeEditRow(notice.id, notice.category, notice.text || '', notice.visible);
         noticeContainer.appendChild(row);
       });
     }
@@ -2763,50 +2785,6 @@
         showToast('已恢復統計全部歷史良辰');
       });
 
-      function createTaskEditRow(taskId = '', subject = '國語', text = '', visible = true) {
-        const row = document.createElement('div');
-        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
-        row.setAttribute('data-task-id', taskId || ('dt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
-
-        let subOptions = (appState.subjects || []).map(s => 
-          `<option value="${s.name}" ${s.name === subject ? 'selected' : ''}>${s.icon || ''} ${s.name}</option>`
-        ).join('');
-
-        row.innerHTML = `
-          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
-            <input type="checkbox" class="task-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
-            <span>顯示</span>
-          </label>
-          <select class="task-subject-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
-            ${subOptions}
-          </select>
-          <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入作業內容..." class="task-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
-          <button class="del-task-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
-        `;
-        return row;
-      }
-
-      function createNoticeEditRow(noticeId = '', category = '測驗', text = '', visible = true) {
-        const row = document.createElement('div');
-        row.className = 'flex items-center space-x-2 bg-amber-50/70 p-2 rounded-lg border border-amber-200';
-        row.setAttribute('data-notice-id', noticeId || ('dn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
-
-        row.innerHTML = `
-          <label class="flex items-center space-x-1 text-xs shrink-0 font-bold text-stone-700 cursor-pointer">
-            <input type="checkbox" class="notice-visible-chk rounded text-amber-800" ${visible ? 'checked' : ''}>
-            <span>顯示</span>
-          </label>
-          <select class="notice-category-sel text-xs font-bold border border-amber-300 rounded p-1.5 bg-white shrink-0">
-            <option value="測驗" ${category === '測驗' ? 'selected' : ''}>測驗</option>
-            <option value="物品" ${category === '物品' ? 'selected' : ''}>物品</option>
-            <option value="其他" ${category === '其他' ? 'selected' : ''}>其他</option>
-          </select>
-          <input type="text" value="${text.replace(/"/g, '&quot;')}" placeholder="輸入測驗或攜帶用具備忘..." class="notice-text-inp flex-1 text-xs p-1.5 rounded border border-amber-300 bg-white">
-          <button class="del-notice-row text-stone-400 hover:text-rose-600 px-2 font-bold text-sm" title="刪除">🗑️</button>
-        `;
-        return row;
-      }
-
       document.getElementById('add-daily-task-btn').addEventListener('click', () => {
         checkAdminAction(() => {
           const container = document.getElementById('daily-tasks-editable-list');
@@ -2836,6 +2814,20 @@
             const row = e.target.closest('[data-task-id]');
             if (row) row.remove();
           });
+        } else if (e.target.classList.contains('move-up-task-btn')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-task-id]');
+            if (row && row.previousElementSibling) {
+              row.parentNode.insertBefore(row, row.previousElementSibling);
+            }
+          });
+        } else if (e.target.classList.contains('move-down-task-btn')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-task-id]');
+            if (row && row.nextElementSibling) {
+              row.parentNode.insertBefore(row.nextElementSibling, row);
+            }
+          });
         }
       });
 
@@ -2844,6 +2836,20 @@
           checkAdminAction(() => {
             const row = e.target.closest('[data-notice-id]');
             if (row) row.remove();
+          });
+        } else if (e.target.classList.contains('move-up-notice-btn')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-notice-id]');
+            if (row && row.previousElementSibling) {
+              row.parentNode.insertBefore(row, row.previousElementSibling);
+            }
+          });
+        } else if (e.target.classList.contains('move-down-notice-btn')) {
+          checkAdminAction(() => {
+            const row = e.target.closest('[data-notice-id]');
+            if (row && row.nextElementSibling) {
+              row.parentNode.insertBefore(row.nextElementSibling, row);
+            }
           });
         }
       });
@@ -2899,9 +2905,28 @@
 
       document.getElementById('convert-to-chapter-btn').addEventListener('click', () => {
         checkAdminAction(() => {
-          const currentDayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.text.trim());
-          if (currentDayTasks.length === 0) {
-            showToast('當前良辰無有效作業可轉入篇章！');
+          // 優先讀取當前編修台上的作業項目，僅擷取有打勾「顯示」且內容非空的作業
+          const rows = document.querySelectorAll('#daily-tasks-editable-list [data-task-id]');
+          let targetTasks = [];
+
+          if (rows.length > 0) {
+            rows.forEach(r => {
+              const visible = r.querySelector('.task-visible-chk')?.checked ?? false;
+              const subject = r.querySelector('.task-subject-sel')?.value || '國語';
+              const text = (r.querySelector('.task-text-inp')?.value || '').trim();
+              if (visible && text) {
+                targetTasks.push({ subject, text });
+              }
+            });
+          } else {
+            // 若編修台尚未展開，以系統中當日「勾選顯示」的作業為準
+            targetTasks = (appState.dailyTasks || [])
+              .filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim())
+              .map(t => ({ subject: t.subject, text: t.text.trim() }));
+          }
+
+          if (targetTasks.length === 0) {
+            showToast('當前無「勾選顯示」的有效作業可轉入篇章！');
             return;
           }
 
@@ -2909,7 +2934,7 @@
           const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
           let count = 0;
 
-          currentDayTasks.forEach(task => {
+          targetTasks.forEach(task => {
             let targetSub = (appState.subjects || []).find(s => s.name === task.subject);
             if (!targetSub) {
               targetSub = { id: 'sub_' + Date.now(), name: task.subject, icon: '📚', chapters: [] };
@@ -2925,7 +2950,7 @@
           persistState();
           renderSubjectsView();
           renderGradingView();
-          showToast(`成功轉入 ${count} 篇章至典籍篇章閣！`);
+          showToast(`成功將 ${count} 項已顯示作業轉入修煉篇章！`);
         });
       });
 
