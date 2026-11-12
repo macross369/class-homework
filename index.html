@@ -118,16 +118,16 @@
       <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-realms">
         🥋 修煉境界譜
       </button>
-      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-grading">
+      <button class="nav-tab admin-only-tab hidden px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-grading">
         ⚔️ 批閱點卯台
       </button>
-      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-students">
+      <button class="nav-tab admin-only-tab hidden px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-students">
         📜 同門弟子錄
       </button>
-      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-subjects">
+      <button class="nav-tab admin-only-tab hidden px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-subjects">
         📚 典籍篇章閣
       </button>
-      <button class="nav-tab px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-history">
+      <button class="nav-tab admin-only-tab hidden px-3.5 py-2 font-bold rounded-t-lg transition border-t-2 border-x-2 border-transparent text-[#e6cb97] hover:text-white shrink-0" data-tab="tab-history">
         📑 歷練卷宗錄
       </button>
     </nav>
@@ -2722,6 +2722,7 @@
       const editBox = document.getElementById('admin-daily-edit-box');
       const syncBox = document.getElementById('admin-morning-sync-box');
       const startDateBox = document.getElementById('wanxiang-start-date-container');
+      const adminTabs = document.querySelectorAll('.admin-only-tab');
 
       if (isAdmin) {
         badge.classList.remove('hidden');
@@ -2729,6 +2730,7 @@
         loginBtn.classList.add('hidden');
         editBox.classList.remove('hidden');
         syncBox.classList.remove('hidden');
+        adminTabs.forEach(tab => tab.classList.remove('hidden'));
         if (startDateBox) {
           startDateBox.classList.remove('hidden');
           startDateBox.classList.add('flex');
@@ -2739,9 +2741,15 @@
         loginBtn.classList.remove('hidden');
         editBox.classList.add('hidden');
         syncBox.classList.add('hidden');
+        adminTabs.forEach(tab => tab.classList.add('hidden'));
         if (startDateBox) {
           startDateBox.classList.add('hidden');
           startDateBox.classList.remove('flex');
+        }
+        // 若退席時正好位於管理標籤頁，自動切回今日修煉榜
+        const activeAdminSection = document.querySelector('#tab-grading:not(.hidden), #tab-students:not(.hidden), #tab-subjects:not(.hidden), #tab-history:not(.hidden)');
+        if (activeAdminSection) {
+          document.querySelector('.nav-tab[data-tab="tab-daily"]')?.click();
         }
       }
     }
