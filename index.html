@@ -466,12 +466,15 @@
             </h3>
             <p class="text-xs text-stone-600 mt-0.5">登記當日作業狀況，系統即刻發放靈氣修為，助同門進階突破！</p>
           </div>
-          <div class="flex items-center space-x-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2 text-xs">
             <button id="batch-all-punctual-btn" class="px-3 py-1.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold hover:bg-emerald-200">
               全體按時修練 (+4)
             </button>
             <button id="batch-all-perfect-btn" class="px-3 py-1.5 rounded bg-rose-100 text-rose-800 border border-rose-300 font-bold hover:bg-rose-200">
               全體融會貫通 (+4)
+            </button>
+            <button id="batch-all-corrected-btn" class="px-3 py-1.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-300 font-bold hover:bg-indigo-200">
+              全體修正招式 (+2)
             </button>
             <button id="clear-current-grading-btn" class="px-3 py-1.5 rounded bg-stone-100 text-stone-700 border border-stone-300 font-bold hover:bg-stone-200">
               清空重置
@@ -3499,6 +3502,16 @@
           if (f) {
             f.checked = true;
             f.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      document.getElementById('batch-all-corrected-btn').addEventListener('click', () => {
+        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+          const c = tr.querySelector('.grade-corrected-chk');
+          if (c) {
+            c.checked = true;
+            c.dispatchEvent(new Event('change'));
           }
         });
       });
