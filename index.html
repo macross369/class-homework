@@ -2081,15 +2081,26 @@
     // 5.6 批閱點卯台
     function renderGradingView() {
       const subSel = document.getElementById('grading-subject-sel');
+      const chapSel = document.getElementById('grading-chapter-sel');
+      const tasksSel = document.getElementById('grading-date-tasks-sel');
+
+      // 保存目前正在批閱的選取狀態，避免重繪時跳回第一項
+      const prevSub = subSel ? subSel.value : '';
+      const prevChap = chapSel ? chapSel.value : '';
+      const prevTask = tasksSel ? tasksSel.value : '';
+
       subSel.innerHTML = (appState.subjects || []).map(s => `<option value="${s.name}">${s.icon || ''} ${s.name}</option>`).join('');
+      if (prevSub && (appState.subjects || []).some(s => s.name === prevSub)) {
+        subSel.value = prevSub;
+      }
 
       const dateInp = document.getElementById('grading-date-query');
       if (dateInp && !dateInp.value) {
         dateInp.value = selectedDateKey || getTodayDateKey();
       }
 
-      updateGradingChaptersList();
-      updateGradingDateTasks();
+      updateGradingChaptersList(prevChap);
+      updateGradingDateTasks(prevTask);
       renderGradingCalendar();
       renderGradingTable();
     }
@@ -2151,12 +2162,13 @@
       }
     }
 
-    function updateGradingDateTasks() {
+    function updateGradingDateTasks(preserveTaskId = '') {
       const dateInp = document.getElementById('grading-date-query');
       const targetDate = dateInp ? dateInp.value : (selectedDateKey || getTodayDateKey());
       const tasksSel = document.getElementById('grading-date-tasks-sel');
       if (!tasksSel) return;
 
+      const currentVal = preserveTaskId || tasksSel.value;
       const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text && t.text.trim().length > 0);
 
       if (dayTasks.length === 0) {
@@ -2167,10 +2179,13 @@
           opts += `<option value="${task.id}" data-subject="${task.subject}" data-text="${task.text.replace(/"/g, '&quot;')}">【${task.subject}】${task.text}</option>`;
         });
         tasksSel.innerHTML = opts;
+        if (currentVal && dayTasks.some(t => t.id === currentVal)) {
+          tasksSel.value = currentVal;
+        }
       }
     }
 
-    function updateGradingChaptersList() {
+    function updateGradingChaptersList(preserveChap = '') {
       const currentSub = document.getElementById('grading-subject-sel').value;
       const sub = (appState.subjects || []).find(s => s.name === currentSub);
       const keyword = (document.getElementById('grading-chapter-keyword')?.value || '').trim().toLowerCase();
@@ -2181,10 +2196,15 @@
       }
 
       const chapSel = document.getElementById('grading-chapter-sel');
+      const targetChap = preserveChap || (chapSel ? chapSel.value : '');
+
       if (chapters.length === 0) {
         chapSel.innerHTML = '<option value="">(無符合關鍵字篇章)</option>';
       } else {
-        chapSel.innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
+        chapSel.innerHTML = chapters.map(c => `<option value="${c.replace(/"/g, '&quot;')}">${c}</option>`).join('');
+        if (targetChap && chapters.includes(targetChap)) {
+          chapSel.value = targetChap;
+        }
       }
     }
 
