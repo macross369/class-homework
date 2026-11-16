@@ -503,18 +503,24 @@
             </div>
           </div>
 
-          <!-- 日期查詢與當日作業選取列 (點開月曆標註有作業之良辰) -->
+          <!-- 第一列：作業日期查詢與當日作業選取列 (依聯絡簿指派日期查詢) -->
           <div class="pt-3 border-t border-amber-200/80 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
             <div class="relative">
-              <label class="block font-bold text-stone-700 mb-1">📅 日期查詢</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="font-bold text-stone-700">📅 作業日期查詢</label>
+                <label class="flex items-center space-x-1.5 cursor-pointer bg-amber-100/90 hover:bg-amber-200/80 text-[#5c2d0c] px-2 py-0.5 rounded border border-amber-300 font-bold text-[11px] shadow-2xs transition">
+                  <input type="checkbox" id="grading-show-all-daily-chk" class="rounded text-[#6e1e14] focus:ring-amber-500 cursor-pointer">
+                  <span>顯示當日全部作業</span>
+                </label>
+              </div>
               <div class="relative flex items-center">
-                <input type="text" id="grading-date-query" readonly placeholder="點擊選取查詢日期..." class="w-full p-2 pr-9 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs">
+                <input type="text" id="grading-date-query" readonly placeholder="點擊選取作業日期..." class="w-full p-2 pr-9 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs">
                 <button type="button" id="grading-calendar-toggle-btn" class="absolute right-2.5 text-stone-500 hover:text-amber-800 text-sm font-bold transition" title="點開月曆查詢">
                   🗓️
                 </button>
               </div>
 
-              <!-- 月曆查詢下拉彈窗 (醒目標註有作業之良辰) -->
+              <!-- 作業日期月曆查詢下拉彈窗 -->
               <div id="grading-calendar-popover" class="hidden absolute left-0 top-full mt-1.5 z-40 w-72 sm:w-80 bg-parchment-card border-2 border-[#b89547] rounded-xl p-3 shadow-2xl space-y-2">
                 <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 text-xs">
                   <div class="flex items-center space-x-1">
@@ -551,28 +557,66 @@
               </select>
             </div>
           </div>
+
+          <!-- 第二列：批改日期查詢與當日批改作業選取列 (查詢當日所要批改檢核的作業) -->
+          <div class="pt-3 border-t border-amber-200/80 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="relative">
+              <div class="flex items-center justify-between mb-1">
+                <label class="font-bold text-stone-700">📅 批改日期查詢</label>
+                <label class="flex items-center space-x-1.5 cursor-pointer bg-amber-100/90 hover:bg-amber-200/80 text-[#5c2d0c] px-2 py-0.5 rounded border border-amber-300 font-bold text-[11px] shadow-2xs transition">
+                  <input type="checkbox" id="grading-show-all-checkdate-chk" checked class="rounded text-[#6e1e14] focus:ring-amber-500 cursor-pointer">
+                  <span>顯示當日全部作業</span>
+                </label>
+              </div>
+              <div class="relative flex items-center">
+                <input type="text" id="grading-checkdate-query" readonly placeholder="點擊選取批改日期..." class="w-full p-2 pr-9 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs">
+                <button type="button" id="grading-checkcal-toggle-btn" class="absolute right-2.5 text-stone-500 hover:text-amber-800 text-sm font-bold transition" title="點開批改月曆查詢">
+                  🗓️
+                </button>
+              </div>
+
+              <!-- 批改日期月曆查詢下拉彈窗 -->
+              <div id="grading-checkcal-popover" class="hidden absolute left-0 top-full mt-1.5 z-40 w-72 sm:w-80 bg-parchment-card border-2 border-[#b89547] rounded-xl p-3 shadow-2xl space-y-2">
+                <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 text-xs">
+                  <div class="flex items-center space-x-1">
+                    <button type="button" id="grading-checkcal-prev" class="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 font-bold text-stone-800">◀</button>
+                    <span id="grading-checkcal-month-label" class="font-bold text-stone-800 min-w-[70px] text-center">2026年11月</span>
+                    <button type="button" id="grading-checkcal-next" class="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 font-bold text-stone-800">▶</button>
+                  </div>
+                  <button type="button" id="grading-checkcal-today" class="px-2 py-0.5 rounded bg-[#82542a] text-[#fff0c7] hover:bg-[#9c6634] font-bold text-[11px] shadow-xs">
+                    今日
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-stone-500">
+                  <span class="text-rose-600">日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="text-emerald-700">六</span>
+                </div>
+                <div id="grading-checkcal-days-grid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                  <!-- 動態產生批改月曆格子 -->
+                </div>
+
+                <div class="pt-1.5 border-t border-amber-200 flex items-center justify-between text-[11px] text-stone-600">
+                  <span class="flex items-center space-x-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                    <span class="font-bold text-emerald-800">綠點標註：當日有待批改作業</span>
+                  </span>
+                  <span class="text-stone-400 text-[10px]">點擊任一日即可載入</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block font-bold text-stone-700 mb-1">📜 當日批改作業選取 (點選即自動載入當日待批改作業之科目與篇章名冊)</label>
+              <select id="grading-checkdate-tasks-sel" class="w-full p-2 rounded-lg border border-amber-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                <!-- 動態載入當日批改作業 -->
+              </select>
+            </div>
+          </div>
         </div>
 
-        <!-- 批閱點卯學生名冊表格 -->
-        <div class="overflow-x-auto rounded-lg border border-amber-300 shadow-sm bg-white">
-          <table class="w-full text-center text-xs">
-            <thead class="bg-amber-100/90 text-stone-800 font-bold border-b border-amber-300">
-              <tr>
-                <th class="py-2.5 px-3">座號</th>
-                <th class="py-2.5 px-3 text-left">弟子姓名</th>
-                <th class="py-2.5 px-3">當前境界</th>
-                <th class="py-2.5 px-3">篇章完成狀態</th>
-                <th class="py-2.5 px-3 text-emerald-800">按時修練 (+4)</th>
-                <th class="py-2.5 px-3 text-amber-800">運功稍遲 (+1)</th>
-                <th class="py-2.5 px-3 text-rose-800">融會貫通 (+4)</th>
-                <th class="py-2.5 px-3 text-indigo-800">修正招式 (+2)</th>
-                <th class="py-2.5 px-3 font-wuxia text-sm">本回修為</th>
-              </tr>
-            </thead>
-            <tbody id="grading-table-body" class="divide-y divide-amber-100">
-              <!-- 動態生成批閱點卯行 -->
-            </tbody>
-          </table>
+        <!-- 批閱點卯學生名冊容器 (支援單一作業檢視 與 當日全部作業依序展開檢視) -->
+        <div id="grading-tables-wrapper" class="space-y-5">
+          <!-- 動態生成批閱點卯表格 -->
         </div>
 
         <div class="flex justify-end pt-2">
@@ -953,6 +997,8 @@
     let morningCalMonth = new Date().getMonth();
     let gradingCalYear = new Date().getFullYear();
     let gradingCalMonth = new Date().getMonth();
+    let gradingCheckCalYear = new Date().getFullYear();
+    let gradingCheckCalMonth = new Date().getMonth();
     let activeEditingSubjectId = null;
 
     let appState = {
@@ -2086,11 +2132,13 @@
       const subSel = document.getElementById('grading-subject-sel');
       const chapSel = document.getElementById('grading-chapter-sel');
       const tasksSel = document.getElementById('grading-date-tasks-sel');
+      const checkTasksSel = document.getElementById('grading-checkdate-tasks-sel');
 
       // 保存目前正在批閱的選取狀態，避免重繪時跳回第一項
       const prevSub = subSel ? subSel.value : '';
       const prevChap = chapSel ? chapSel.value : '';
       const prevTask = tasksSel ? tasksSel.value : '';
+      const prevCheckTask = checkTasksSel ? checkTasksSel.value : '';
 
       subSel.innerHTML = (appState.subjects || []).map(s => `<option value="${s.name}">${s.icon || ''} ${s.name}</option>`).join('');
       if (prevSub && (appState.subjects || []).some(s => s.name === prevSub)) {
@@ -2102,9 +2150,16 @@
         dateInp.value = selectedDateKey || getTodayDateKey();
       }
 
+      const checkDateInp = document.getElementById('grading-checkdate-query');
+      if (checkDateInp && !checkDateInp.value) {
+        checkDateInp.value = morningSelectedDateKey || getTodayDateKey();
+      }
+
       updateGradingChaptersList(prevChap);
       updateGradingDateTasks(prevTask);
+      updateGradingCheckDateTasks(prevCheckTask);
       renderGradingCalendar();
+      renderGradingCheckCalendar();
       renderGradingTable();
     }
 
@@ -2158,11 +2213,114 @@
           const qInput = document.getElementById('grading-date-query');
           if (qInput) qInput.value = dStr;
           document.getElementById('grading-calendar-popover')?.classList.add('hidden');
+          const showAllDailyChk = document.getElementById('grading-show-all-daily-chk');
+          const showAllCheckChk = document.getElementById('grading-show-all-checkdate-chk');
+          if (showAllDailyChk) showAllDailyChk.checked = true;
+          if (showAllCheckChk) showAllCheckChk.checked = false;
           updateGradingDateTasks();
+          renderGradingTable();
         });
 
         grid.appendChild(cell);
       }
+    }
+
+    function renderGradingCheckCalendar() {
+      const monthLabel = document.getElementById('grading-checkcal-month-label');
+      if (monthLabel) monthLabel.textContent = `${gradingCheckCalYear}年${gradingCheckCalMonth + 1}月`;
+
+      const grid = document.getElementById('grading-checkcal-days-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const firstDay = new Date(gradingCheckCalYear, gradingCheckCalMonth, 1).getDay();
+      const daysInMonth = new Date(gradingCheckCalYear, gradingCheckCalMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        grid.appendChild(emptyCell);
+      }
+
+      const activeDate = document.getElementById('grading-checkdate-query')?.value || getTodayDateKey();
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${gradingCheckCalYear}-${String(gradingCheckCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'py-1.5 rounded text-xs font-semibold relative transition hover:bg-amber-200 flex flex-col items-center justify-center';
+
+        const checkTasks = getTasksToGradeForCheckDate(dStr);
+        const hasTasks = checkTasks.length > 0;
+
+        if (dStr === activeDate) {
+          cell.classList.add('bg-[#5c2d0c]', 'text-[#f7e8aa]', 'font-bold', 'shadow');
+        } else if (hasTasks) {
+          cell.classList.add('bg-emerald-50', 'border', 'border-emerald-400', 'text-emerald-950', 'font-bold');
+        } else if (dStr === getTodayDateKey()) {
+          cell.classList.add('border', 'border-[#8c4314]', 'text-[#8c4314]', 'font-bold');
+        } else {
+          cell.classList.add('text-stone-700');
+        }
+
+        cell.textContent = d;
+
+        if (hasTasks) {
+          const dot = document.createElement('span');
+          dot.className = `w-1.5 h-1.5 rounded-full absolute bottom-0.5 left-1/2 -translate-x-1/2 ${dStr === activeDate ? 'bg-[#ffd699]' : 'bg-emerald-600'}`;
+          cell.appendChild(dot);
+        }
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const qInput = document.getElementById('grading-checkdate-query');
+          if (qInput) qInput.value = dStr;
+          document.getElementById('grading-checkcal-popover')?.classList.add('hidden');
+          const showAllCheckChk = document.getElementById('grading-show-all-checkdate-chk');
+          const showAllDailyChk = document.getElementById('grading-show-all-daily-chk');
+          if (showAllCheckChk) showAllCheckChk.checked = true;
+          if (showAllDailyChk) showAllDailyChk.checked = false;
+          updateGradingCheckDateTasks();
+          renderGradingTable();
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // 取得指定「批改日期 (checkDate)」當日所要批改的作業清單
+    function getTasksToGradeForCheckDate(checkDateStr) {
+      const hData = getPreviousHomeworkData(checkDateStr);
+      if (hData && hData.tasks && hData.tasks.length > 0) {
+        return hData.tasks.map(t => ({
+          id: t.id,
+          subject: t.subject,
+          text: t.text.trim(),
+          assignDate: hData.date || t.date || getTodayDateKey()
+        }));
+      }
+      return [];
+    }
+
+    function resolveTaskChapterName(subName, taskText, dateStr) {
+      let sub = (appState.subjects || []).find(s => s.name === subName);
+      if (!sub) {
+        sub = { id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5), name: subName, icon: '📚', chapters: [] };
+        appState.subjects.push(sub);
+      }
+      if (!sub.chapters) sub.chapters = [];
+
+      const parts = (dateStr || getTodayDateKey()).split('-');
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      const dateTag = `[${m}/${d}]`;
+      const datePrefixedTitle = `${dateTag} ${taskText}`;
+
+      let matchedChap = sub.chapters.find(c => c === datePrefixedTitle || c === taskText || c.includes(taskText) || taskText.includes(c));
+      if (!matchedChap) {
+        matchedChap = datePrefixedTitle;
+        sub.chapters.push(matchedChap);
+      }
+      return matchedChap;
     }
 
     function updateGradingDateTasks(preserveTaskId = '') {
@@ -2184,6 +2342,29 @@
         tasksSel.innerHTML = opts;
         if (currentVal && dayTasks.some(t => t.id === currentVal)) {
           tasksSel.value = currentVal;
+        }
+      }
+    }
+
+    function updateGradingCheckDateTasks(preserveTaskId = '') {
+      const checkDateInp = document.getElementById('grading-checkdate-query');
+      const targetCheckDate = checkDateInp ? checkDateInp.value : getTodayDateKey();
+      const checkTasksSel = document.getElementById('grading-checkdate-tasks-sel');
+      if (!checkTasksSel) return;
+
+      const currentVal = preserveTaskId || checkTasksSel.value;
+      const checkTasks = getTasksToGradeForCheckDate(targetCheckDate);
+
+      if (checkTasks.length === 0) {
+        checkTasksSel.innerHTML = '<option value="">(此批改日尚無排定待批改之作業)</option>';
+      } else {
+        let opts = '<option value="">-- 請選取當日批改作業 (共 ' + checkTasks.length + ' 項，源自 ' + checkTasks[0].assignDate + ') --</option>';
+        checkTasks.forEach(task => {
+          opts += `<option value="${task.id}" data-subject="${task.subject}" data-text="${task.text.replace(/"/g, '&quot;')}" data-assign-date="${task.assignDate}">【${task.subject}】${task.text}</option>`;
+        });
+        checkTasksSel.innerHTML = opts;
+        if (currentVal && checkTasks.some(t => t.id === currentVal)) {
+          checkTasksSel.value = currentVal;
         }
       }
     }
@@ -2211,15 +2392,60 @@
       }
     }
 
-    function renderGradingTable() {
-      const currentSub = document.getElementById('grading-subject-sel').value;
-      const currentChap = document.getElementById('grading-chapter-sel').value;
-      const tbody = document.getElementById('grading-table-body');
-      tbody.innerHTML = '';
+    function createGradingSectionElement(subjectName, chapterName, indexNum = null) {
+      const sStyle = getSubjectBadgeStyle(subjectName);
+      const section = document.createElement('div');
+      section.className = 'grading-task-section bg-white rounded-xl border-2 border-amber-300 shadow-sm overflow-hidden';
+      section.setAttribute('data-subject', subjectName);
+      section.setAttribute('data-chapter', chapterName);
+
+      if (indexNum !== null) {
+        const headerBar = document.createElement('div');
+        headerBar.className = 'bg-amber-100/90 px-4 py-2.5 border-b border-amber-300 flex flex-wrap items-center justify-between gap-2';
+        headerBar.innerHTML = `
+          <div class="flex items-center space-x-2.5">
+            <span class="w-6 h-6 rounded-full bg-[#5c2d0c] text-[#ffd699] flex items-center justify-center font-bold text-xs font-wuxia shadow-xs">${indexNum}</span>
+            <span class="px-2 py-0.5 rounded text-xs font-bold ${sStyle.bg} ${sStyle.text} border ${sStyle.border}">${subjectName}</span>
+            <span class="font-bold text-stone-900 text-sm">${chapterName}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <button type="button" class="sec-batch-punctual px-2 py-1 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold hover:bg-emerald-200 transition">該項全體按時 (+4)</button>
+            <button type="button" class="sec-batch-perfect px-2 py-1 rounded bg-rose-100 text-rose-800 border border-rose-300 font-bold hover:bg-rose-200 transition">該項全體融會 (+4)</button>
+            <button type="button" class="sec-batch-corrected px-2 py-1 rounded bg-indigo-100 text-indigo-800 border border-indigo-300 font-bold hover:bg-indigo-200 transition">該項全體修正 (+2)</button>
+            <button type="button" class="sec-batch-clear px-2 py-1 rounded bg-stone-100 text-stone-600 border border-stone-300 font-bold hover:bg-stone-200 transition">重置該項</button>
+          </div>
+        `;
+        section.appendChild(headerBar);
+      }
+
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'overflow-x-auto';
+      const table = document.createElement('table');
+      table.className = 'w-full text-center text-xs';
+      table.innerHTML = `
+        <thead class="bg-amber-50/90 text-stone-800 font-bold border-b border-amber-200">
+          <tr>
+            <th class="py-2.5 px-3">座號</th>
+            <th class="py-2.5 px-3 text-left">弟子姓名</th>
+            <th class="py-2.5 px-3">當前境界</th>
+            <th class="py-2.5 px-3">篇章完成狀態</th>
+            <th class="py-2.5 px-3 text-emerald-800">按時修練 (+4)</th>
+            <th class="py-2.5 px-3 text-amber-800">運功稍遲 (+1)</th>
+            <th class="py-2.5 px-3 text-rose-800">融會貫通 (+4)</th>
+            <th class="py-2.5 px-3 text-indigo-800">修正招式 (+2)</th>
+            <th class="py-2.5 px-3 font-wuxia text-sm">本回修為</th>
+          </tr>
+        </thead>
+        <tbody class="grading-section-tbody divide-y divide-amber-100"></tbody>
+      `;
+      tableWrap.appendChild(table);
+      section.appendChild(tableWrap);
+
+      const tbody = table.querySelector('.grading-section-tbody');
 
       (appState.students || []).forEach(st => {
         const realmInfo = getStudentRealm(st.exp || 0);
-        const existingRec = (appState.records || []).find(r => r.studentId === st.id && r.subject === currentSub && r.chapter === currentChap);
+        const existingRec = (appState.records || []).find(r => r.studentId === st.id && r.subject === subjectName && r.chapter === chapterName);
 
         const isPunctual = existingRec ? (existingRec.items?.punctual ?? false) : false;
         const isLate = existingRec ? (existingRec.items?.late ?? false) : false;
@@ -2251,16 +2477,16 @@
             </span>
           </td>
           <td class="py-2.5 px-3">
-            <input type="checkbox" class="grade-punctual-chk rounded text-emerald-700" ${isPunctual ? 'checked' : ''}>
+            <input type="checkbox" class="grade-punctual-chk rounded text-emerald-700 cursor-pointer" ${isPunctual ? 'checked' : ''}>
           </td>
           <td class="py-2.5 px-3">
-            <input type="checkbox" class="grade-late-chk rounded text-amber-600" ${isLate ? 'checked' : ''}>
+            <input type="checkbox" class="grade-late-chk rounded text-amber-600 cursor-pointer" ${isLate ? 'checked' : ''}>
           </td>
           <td class="py-2.5 px-3">
-            <input type="checkbox" class="grade-perfect-chk rounded text-rose-700" ${isPerfect ? 'checked' : ''}>
+            <input type="checkbox" class="grade-perfect-chk rounded text-rose-700 cursor-pointer" ${isPerfect ? 'checked' : ''}>
           </td>
           <td class="py-2.5 px-3">
-            <input type="checkbox" class="grade-corrected-chk rounded text-indigo-700" ${isCorrected ? 'checked' : ''}>
+            <input type="checkbox" class="grade-corrected-chk rounded text-indigo-700 cursor-pointer" ${isCorrected ? 'checked' : ''}>
           </td>
           <td class="py-2.5 px-3 font-bold text-[#8c4314] grade-row-exp text-sm">
             +0 EXP
@@ -2296,6 +2522,103 @@
 
         updateExp();
       });
+
+      // 綁定單項作業卡片內的快速批次按鈕
+      section.querySelector('.sec-batch-punctual')?.addEventListener('click', () => {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const p = tr.querySelector('.grade-punctual-chk');
+          const l = tr.querySelector('.grade-late-chk');
+          if (p && l) {
+            p.checked = true;
+            l.checked = false;
+            p.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      section.querySelector('.sec-batch-perfect')?.addEventListener('click', () => {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const f = tr.querySelector('.grade-perfect-chk');
+          if (f) {
+            f.checked = true;
+            f.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      section.querySelector('.sec-batch-corrected')?.addEventListener('click', () => {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const c = tr.querySelector('.grade-corrected-chk');
+          if (c) {
+            c.checked = true;
+            c.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+
+      section.querySelector('.sec-batch-clear')?.addEventListener('click', () => {
+        tbody.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+          chk.checked = false;
+          chk.dispatchEvent(new Event('change'));
+        });
+      });
+
+      return section;
+    }
+
+    function renderGradingTable() {
+      const wrapper = document.getElementById('grading-tables-wrapper');
+      if (!wrapper) return;
+      wrapper.innerHTML = '';
+
+      const showAllDaily = document.getElementById('grading-show-all-daily-chk')?.checked ?? false;
+      const showAllCheckDate = document.getElementById('grading-show-all-checkdate-chk')?.checked ?? false;
+
+      if (showAllCheckDate) {
+        const targetCheckDate = document.getElementById('grading-checkdate-query')?.value || getTodayDateKey();
+        const checkTasks = getTasksToGradeForCheckDate(targetCheckDate);
+        if (checkTasks.length === 0) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'py-10 text-center text-stone-500 font-bold text-xs bg-white rounded-xl border border-dashed border-amber-300 tracking-wide';
+          emptyDiv.innerHTML = `🍃 批改良辰【${targetCheckDate}】尚無排定待批改之作業。可切換批改日期查詢，或改用上方「作業日期查詢」調閱。`;
+          wrapper.appendChild(emptyDiv);
+          return;
+        }
+
+        checkTasks.forEach((task, idx) => {
+          const chapName = resolveTaskChapterName(task.subject, task.text, task.assignDate);
+          const secEl = createGradingSectionElement(task.subject, chapName, idx + 1);
+          wrapper.appendChild(secEl);
+        });
+      } else if (showAllDaily) {
+        const targetDate = document.getElementById('grading-date-query')?.value || selectedDateKey || getTodayDateKey();
+        const dayTasks = (appState.dailyTasks || []).filter(t => (t.date || getTodayDateKey()) === targetDate && t.visible && t.text && t.text.trim().length > 0);
+        if (dayTasks.length === 0) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'py-10 text-center text-stone-500 font-bold text-xs bg-white rounded-xl border border-dashed border-amber-300 tracking-wide';
+          emptyDiv.innerHTML = `🍃 作業良辰【${targetDate}】尚無已勾選顯示之當日作業。可切換作業日期查詢，或改用下方「批改日期查詢」調閱。`;
+          wrapper.appendChild(emptyDiv);
+          return;
+        }
+
+        dayTasks.forEach((task, idx) => {
+          const chapName = resolveTaskChapterName(task.subject, task.text.trim(), targetDate);
+          const secEl = createGradingSectionElement(task.subject, chapName, idx + 1);
+          wrapper.appendChild(secEl);
+        });
+      } else {
+        const currentSub = document.getElementById('grading-subject-sel').value;
+        const currentChap = document.getElementById('grading-chapter-sel').value;
+        if (!currentChap) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'py-8 text-center text-stone-400 font-bold text-xs bg-white rounded-xl border border-amber-200';
+          emptyDiv.textContent = '請先自上方選取修煉科目與篇章，或勾選「顯示當日全部作業」。';
+          wrapper.appendChild(emptyDiv);
+          return;
+        }
+        const secEl = createGradingSectionElement(currentSub, currentChap, null);
+        wrapper.appendChild(secEl);
+      }
     }
 
     // 5.7 同門弟子錄
@@ -3372,22 +3695,49 @@
         });
       });
 
+      document.getElementById('grading-show-all-daily-chk')?.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          const checkChk = document.getElementById('grading-show-all-checkdate-chk');
+          if (checkChk) checkChk.checked = false;
+        }
+        renderGradingTable();
+      });
+
+      document.getElementById('grading-show-all-checkdate-chk')?.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          const dailyChk = document.getElementById('grading-show-all-daily-chk');
+          if (dailyChk) dailyChk.checked = false;
+        }
+        renderGradingTable();
+      });
+
+      function uncheckAllGradingShowAllModes() {
+        const dailyChk = document.getElementById('grading-show-all-daily-chk');
+        const checkChk = document.getElementById('grading-show-all-checkdate-chk');
+        if (dailyChk) dailyChk.checked = false;
+        if (checkChk) checkChk.checked = false;
+      }
+
       document.getElementById('grading-subject-sel').addEventListener('change', () => {
+        uncheckAllGradingShowAllModes();
         updateGradingChaptersList();
         renderGradingTable();
       });
 
       document.getElementById('grading-chapter-keyword').addEventListener('input', () => {
+        uncheckAllGradingShowAllModes();
         updateGradingChaptersList();
         renderGradingTable();
       });
 
       document.getElementById('grading-chapter-sel').addEventListener('change', () => {
+        uncheckAllGradingShowAllModes();
         renderGradingTable();
       });
 
       function toggleGradingCalendar(e) {
         if (e) e.stopPropagation();
+        document.getElementById('grading-checkcal-popover')?.classList.add('hidden');
         const popover = document.getElementById('grading-calendar-popover');
         if (!popover) return;
         const isHidden = popover.classList.contains('hidden');
@@ -3407,14 +3757,45 @@
         }
       }
 
+      function toggleGradingCheckCalendar(e) {
+        if (e) e.stopPropagation();
+        document.getElementById('grading-calendar-popover')?.classList.add('hidden');
+        const popover = document.getElementById('grading-checkcal-popover');
+        if (!popover) return;
+        const isHidden = popover.classList.contains('hidden');
+        if (isHidden) {
+          const currentVal = document.getElementById('grading-checkdate-query')?.value || getTodayDateKey();
+          if (currentVal) {
+            const parts = currentVal.split('-');
+            if (parts.length === 3) {
+              gradingCheckCalYear = parseInt(parts[0], 10);
+              gradingCheckCalMonth = parseInt(parts[1], 10) - 1;
+            }
+          }
+          renderGradingCheckCalendar();
+          popover.classList.remove('hidden');
+        } else {
+          popover.classList.add('hidden');
+        }
+      }
+
       document.getElementById('grading-date-query')?.addEventListener('click', toggleGradingCalendar);
       document.getElementById('grading-calendar-toggle-btn')?.addEventListener('click', toggleGradingCalendar);
+
+      document.getElementById('grading-checkdate-query')?.addEventListener('click', toggleGradingCheckCalendar);
+      document.getElementById('grading-checkcal-toggle-btn')?.addEventListener('click', toggleGradingCheckCalendar);
 
       document.addEventListener('click', (e) => {
         const popover = document.getElementById('grading-calendar-popover');
         if (popover && !popover.classList.contains('hidden')) {
           if (!popover.contains(e.target) && e.target.id !== 'grading-date-query' && e.target.id !== 'grading-calendar-toggle-btn') {
             popover.classList.add('hidden');
+          }
+        }
+        const checkPopover = document.getElementById('grading-checkcal-popover');
+        if (checkPopover && !checkPopover.classList.contains('hidden')) {
+          if (!checkPopover.contains(e.target) && e.target.id !== 'grading-checkdate-query' && e.target.id !== 'grading-checkcal-toggle-btn') {
+            checkPopover.classList.add('hidden');
           }
         }
       });
@@ -3441,9 +3822,46 @@
         const todayStr = getTodayDateKey();
         const qInput = document.getElementById('grading-date-query');
         if (qInput) qInput.value = todayStr;
+        const showAllDailyChk = document.getElementById('grading-show-all-daily-chk');
+        const showAllCheckChk = document.getElementById('grading-show-all-checkdate-chk');
+        if (showAllDailyChk) showAllDailyChk.checked = true;
+        if (showAllCheckChk) showAllCheckChk.checked = false;
         renderGradingCalendar();
         document.getElementById('grading-calendar-popover')?.classList.add('hidden');
         updateGradingDateTasks();
+        renderGradingTable();
+      });
+
+      document.getElementById('grading-checkcal-prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        gradingCheckCalMonth--;
+        if (gradingCheckCalMonth < 0) { gradingCheckCalMonth = 11; gradingCheckCalYear--; }
+        renderGradingCheckCalendar();
+      });
+
+      document.getElementById('grading-checkcal-next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        gradingCheckCalMonth++;
+        if (gradingCheckCalMonth > 11) { gradingCheckCalMonth = 0; gradingCheckCalYear++; }
+        renderGradingCheckCalendar();
+      });
+
+      document.getElementById('grading-checkcal-today')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const today = new Date();
+        gradingCheckCalYear = today.getFullYear();
+        gradingCheckCalMonth = today.getMonth();
+        const todayStr = getTodayDateKey();
+        const qInput = document.getElementById('grading-checkdate-query');
+        if (qInput) qInput.value = todayStr;
+        const showAllCheckChk = document.getElementById('grading-show-all-checkdate-chk');
+        const showAllDailyChk = document.getElementById('grading-show-all-daily-chk');
+        if (showAllCheckChk) showAllCheckChk.checked = true;
+        if (showAllDailyChk) showAllDailyChk.checked = false;
+        renderGradingCheckCalendar();
+        document.getElementById('grading-checkcal-popover')?.classList.add('hidden');
+        updateGradingCheckDateTasks();
+        renderGradingTable();
       });
 
       document.getElementById('grading-date-tasks-sel').addEventListener('change', (e) => {
@@ -3451,41 +3869,51 @@
         const opt = sel.options[sel.selectedIndex];
         if (!opt || !opt.value) return;
 
+        uncheckAllGradingShowAllModes();
+
         const subName = opt.getAttribute('data-subject');
         const taskText = opt.getAttribute('data-text');
         const qDate = document.getElementById('grading-date-query').value || selectedDateKey;
 
-        let sub = (appState.subjects || []).find(s => s.name === subName);
-        if (!sub) {
-          sub = { id: 'sub_' + Date.now(), name: subName, icon: '📚', chapters: [] };
-          appState.subjects.push(sub);
-        }
+        const matchedChap = resolveTaskChapterName(subName, taskText, qDate);
 
         const subSel = document.getElementById('grading-subject-sel');
         subSel.value = subName;
-
-        const dObj = new Date(qDate);
-        const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
-        const datePrefixedTitle = `${dateTag} ${taskText}`;
-
-        if (!sub.chapters) sub.chapters = [];
-        let matchedChap = sub.chapters.find(c => c === datePrefixedTitle || c === taskText || c.includes(taskText) || taskText.includes(c));
-
-        if (!matchedChap) {
-          matchedChap = datePrefixedTitle;
-          sub.chapters.push(matchedChap);
-        }
 
         document.getElementById('grading-chapter-keyword').value = '';
         updateGradingChaptersList();
         document.getElementById('grading-chapter-sel').value = matchedChap;
 
         renderGradingTable();
-        showToast(`已載入【${subName}】${matchedChap} 批閱名冊！`);
+        showToast(`已單獨載入【${subName}】${matchedChap} 批閱名冊！`);
+      });
+
+      document.getElementById('grading-checkdate-tasks-sel')?.addEventListener('change', (e) => {
+        const sel = e.target;
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+
+        uncheckAllGradingShowAllModes();
+
+        const subName = opt.getAttribute('data-subject');
+        const taskText = opt.getAttribute('data-text');
+        const assignDate = opt.getAttribute('data-assign-date') || getTodayDateKey();
+
+        const matchedChap = resolveTaskChapterName(subName, taskText, assignDate);
+
+        const subSel = document.getElementById('grading-subject-sel');
+        subSel.value = subName;
+
+        document.getElementById('grading-chapter-keyword').value = '';
+        updateGradingChaptersList();
+        document.getElementById('grading-chapter-sel').value = matchedChap;
+
+        renderGradingTable();
+        showToast(`已單獨載入待批改作業【${subName}】${matchedChap} 名冊！`);
       });
 
       document.getElementById('batch-all-punctual-btn').addEventListener('click', () => {
-        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+        document.querySelectorAll('#grading-tables-wrapper tbody tr').forEach(tr => {
           const p = tr.querySelector('.grade-punctual-chk');
           const l = tr.querySelector('.grade-late-chk');
           if (p && l) {
@@ -3497,7 +3925,7 @@
       });
 
       document.getElementById('batch-all-perfect-btn').addEventListener('click', () => {
-        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+        document.querySelectorAll('#grading-tables-wrapper tbody tr').forEach(tr => {
           const f = tr.querySelector('.grade-perfect-chk');
           if (f) {
             f.checked = true;
@@ -3507,7 +3935,7 @@
       });
 
       document.getElementById('batch-all-corrected-btn').addEventListener('click', () => {
-        document.querySelectorAll('#grading-table-body tr').forEach(tr => {
+        document.querySelectorAll('#grading-tables-wrapper tbody tr').forEach(tr => {
           const c = tr.querySelector('.grade-corrected-chk');
           if (c) {
             c.checked = true;
@@ -3517,7 +3945,7 @@
       });
 
       document.getElementById('clear-current-grading-btn').addEventListener('click', () => {
-        document.querySelectorAll('#grading-table-body input[type="checkbox"]').forEach(chk => {
+        document.querySelectorAll('#grading-tables-wrapper input[type="checkbox"]').forEach(chk => {
           chk.checked = false;
           chk.dispatchEvent(new Event('change'));
         });
@@ -3525,71 +3953,76 @@
 
       document.getElementById('save-grading-btn').addEventListener('click', () => {
         checkAdminAction(() => {
-          const subject = document.getElementById('grading-subject-sel').value;
-          const chapter = document.getElementById('grading-chapter-sel').value;
-          if (!chapter) {
-            showToast('請先選取修練篇章！');
+          const sections = document.querySelectorAll('#grading-tables-wrapper .grading-task-section');
+          if (sections.length === 0) {
+            showToast('目前畫面無可呈報之作業篇章！');
             return;
           }
 
-          const rows = document.querySelectorAll('#grading-table-body tr');
           let savedCount = 0;
 
-          rows.forEach(tr => {
-            const sid = tr.getAttribute('data-student-id');
-            const student = (appState.students || []).find(s => s.id === sid);
-            if (!student) return;
+          sections.forEach(sec => {
+            const subject = sec.getAttribute('data-subject');
+            const chapter = sec.getAttribute('data-chapter');
+            if (!subject || !chapter) return;
 
-            const p = tr.querySelector('.grade-punctual-chk').checked;
-            const l = tr.querySelector('.grade-late-chk').checked;
-            const f = tr.querySelector('.grade-perfect-chk').checked;
-            const c = tr.querySelector('.grade-corrected-chk').checked;
+            const rows = sec.querySelectorAll('tbody tr');
+            rows.forEach(tr => {
+              const sid = tr.getAttribute('data-student-id');
+              const student = (appState.students || []).find(s => s.id === sid);
+              if (!student) return;
 
-            let exp = 0;
-            if (p) exp += 4;
-            if (l) exp += 1;
-            if (f) exp += 4;
-            if (c) exp += 2;
+              const p = tr.querySelector('.grade-punctual-chk').checked;
+              const l = tr.querySelector('.grade-late-chk').checked;
+              const f = tr.querySelector('.grade-perfect-chk').checked;
+              const c = tr.querySelector('.grade-corrected-chk').checked;
 
-            const existingIdx = (appState.records || []).findIndex(r => r.studentId === sid && r.subject === subject && r.chapter === chapter);
+              let exp = 0;
+              if (p) exp += 4;
+              if (l) exp += 1;
+              if (f) exp += 4;
+              if (c) exp += 2;
 
-            if (exp > 0) {
-              if (existingIdx >= 0) {
+              const existingIdx = (appState.records || []).findIndex(r => r.studentId === sid && r.subject === subject && r.chapter === chapter);
+
+              if (exp > 0) {
+                if (existingIdx >= 0) {
+                  student.exp = Math.max(0, (student.exp || 0) - (appState.records[existingIdx].expGained || 0));
+                  appState.records[existingIdx].items = { punctual: p, late: l, perfect: f, corrected: c };
+                  appState.records[existingIdx].expGained = exp;
+                  appState.records[existingIdx].timestamp = Date.now();
+                } else {
+                  appState.records.push({
+                    id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    date: getTodayDateKey(),
+                    timestamp: Date.now(),
+                    subject,
+                    chapter,
+                    studentId: sid,
+                    studentName: student.name,
+                    items: { punctual: p, late: l, perfect: f, corrected: c },
+                    expGained: exp
+                  });
+                }
+                student.exp = (student.exp || 0) + exp;
+                savedCount++;
+
+                const simChap = simplifyTaskName(chapter);
+                if (appState.morningRecords && appState.morningRecords[getTodayDateKey()]) {
+                  if (!appState.morningRecords[getTodayDateKey()][sid]) appState.morningRecords[getTodayDateKey()][sid] = {};
+                  if (p) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'punctual';
+                  else if (l) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'late';
+                }
+              } else if (existingIdx >= 0) {
                 student.exp = Math.max(0, (student.exp || 0) - (appState.records[existingIdx].expGained || 0));
-                appState.records[existingIdx].items = { punctual: p, late: l, perfect: f, corrected: c };
-                appState.records[existingIdx].expGained = exp;
-                appState.records[existingIdx].timestamp = Date.now();
-              } else {
-                appState.records.push({
-                  id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-                  date: getTodayDateKey(),
-                  timestamp: Date.now(),
-                  subject,
-                  chapter,
-                  studentId: sid,
-                  studentName: student.name,
-                  items: { punctual: p, late: l, perfect: f, corrected: c },
-                  expGained: exp
-                });
+                appState.records.splice(existingIdx, 1);
               }
-              student.exp = (student.exp || 0) + exp;
-              savedCount++;
-
-              const simChap = simplifyTaskName(chapter);
-              if (appState.morningRecords && appState.morningRecords[getTodayDateKey()]) {
-                if (!appState.morningRecords[getTodayDateKey()][sid]) appState.morningRecords[getTodayDateKey()][sid] = {};
-                if (p) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'punctual';
-                else if (l) appState.morningRecords[getTodayDateKey()][sid][simChap] = 'late';
-              }
-            } else if (existingIdx >= 0) {
-              student.exp = Math.max(0, (student.exp || 0) - (appState.records[existingIdx].expGained || 0));
-              appState.records.splice(existingIdx, 1);
-            }
+            });
           });
 
           persistState();
           renderAll();
-          showToast(`呈報成功！已為 ${savedCount} 位同門頒發修為！`);
+          showToast(`呈報成功！已一次性登記 ${sections.length} 項作業、共 ${savedCount} 筆修為紀錄！`);
         });
       });
 
