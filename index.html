@@ -1012,7 +1012,8 @@
       morningRecords: {},
       records: [],
       homeworkCheckDateMap: {}, // 記錄：{ [checkDate]: homeworkAssignDate }
-      chapterMeta: {} // 記錄篇章的檢核良辰：{ [chapTitle]: { checkDate, assignDate } }
+      chapterMeta: {}, // 記錄篇章的檢核良辰：{ [chapTitle]: { checkDate, assignDate } }
+      taskChapterLinks: {} // 記錄當日作業列與已轉入篇章之對應：{ [`${assignDate}__${taskId}`]: { subject, chapter, assignDate, taskId } }
     };
 
     // 自動清理歷史測試遺留之幽靈暫存（11/10 啟用前之誤留草稿）
@@ -1044,6 +1045,9 @@
           if (parsed.currentFont) appState.currentFont = parsed.currentFont;
           if (parsed.currentSize) appState.currentSize = parsed.currentSize;
           if (typeof parsed.wanXiangStartDate === 'string') appState.wanXiangStartDate = parsed.wanXiangStartDate;
+          if (parsed.homeworkCheckDateMap && typeof parsed.homeworkCheckDateMap === 'object') appState.homeworkCheckDateMap = parsed.homeworkCheckDateMap;
+          if (parsed.chapterMeta && typeof parsed.chapterMeta === 'object') appState.chapterMeta = parsed.chapterMeta;
+          if (parsed.taskChapterLinks && typeof parsed.taskChapterLinks === 'object') appState.taskChapterLinks = parsed.taskChapterLinks;
         }
       }
       sanitizeAppState();
@@ -1096,6 +1100,9 @@
             if (cloudState.currentFont) appState.currentFont = cloudState.currentFont;
             if (cloudState.currentSize) appState.currentSize = cloudState.currentSize;
             if (typeof cloudState.wanXiangStartDate === 'string') appState.wanXiangStartDate = cloudState.wanXiangStartDate;
+            if (cloudState.homeworkCheckDateMap && typeof cloudState.homeworkCheckDateMap === 'object') appState.homeworkCheckDateMap = cloudState.homeworkCheckDateMap;
+            if (cloudState.chapterMeta && typeof cloudState.chapterMeta === 'object') appState.chapterMeta = cloudState.chapterMeta;
+            if (cloudState.taskChapterLinks && typeof cloudState.taskChapterLinks === 'object') appState.taskChapterLinks = cloudState.taskChapterLinks;
 
             sanitizeAppState();
             localStorage.setItem('xiandao_app_state', JSON.stringify(appState));
@@ -2313,14 +2320,78 @@
       const m = parseInt(parts[1], 10);
       const d = parseInt(parts[2], 10);
       const dateTag = `[${m}/${d}]`;
-      const datePrefixedTitle = `${dateTag} ${taskText}`;
+      const hasDatePrefix = /^\[\d{1,2}\/\d{1,2}\]\s*/.test(taskText);
+      const datePrefixedTitle = hasDatePrefix ? taskText : `${dateTag} ${taskText}`;
 
-      let matchedChap = sub.chapters.find(c => c === datePrefixedTitle || c === taskText || c.includes(taskText) || taskText.includes(c));
+      // 嚴格比對當日專屬日期標籤之篇章，避免不同日期的同名作業（如海洋繪本）誤抓到過去日期的舊篇章與舊紀錄
+      let matchedChap = sub.chapters.find(c => c === datePrefixedTitle);
       if (!matchedChap) {
         matchedChap = datePrefixedTitle;
         sub.chapters.push(matchedChap);
+        persistState(true);
       }
       return matchedChap;
+    }
+
+    // 判斷作業在轉入篇章時，是否已有對應的舊篇章需要自動改名更新
+    function findExistingTransferredChapter(task, assignDate) {
+      const parts = (assignDate || getTodayDateKey()).split('-');
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      const dateTag = `[${m}/${d}]`;
+      const hasDatePrefix = /^\[\d{1,2}\/\d{1,2}\]\s*/.test(task.text);
+      const newChapTitle = hasDatePrefix ? task.text : `${dateTag} ${task.text}`;
+      const linkKey = `${assignDate}__${task.id}`;
+
+      // 1. 優先透過作業列 ID 精準追蹤原已轉入之篇章
+      const prevLink = appState.taskChapterLinks ? appState.taskChapterLinks[linkKey] : null;
+      if (prevLink && prevLink.chapter) {
+        const oldSub = (appState.subjects || []).find(s => s.name === prevLink.subject);
+        if (oldSub && Array.isArray(oldSub.chapters) && oldSub.chapters.includes(prevLink.chapter)) {
+          if (prevLink.subject === task.subject && prevLink.chapter === newChapTitle) {
+            return { status: 'unchanged', oldSubject: prevLink.subject, oldChapter: prevLink.chapter, newChapter: newChapTitle };
+          }
+          return { status: 'update', oldSubject: prevLink.subject, oldChapter: prevLink.chapter, newChapter: newChapTitle };
+        }
+      }
+
+      // 2. 輔助比對：若同科目同日期已有完全相同的新篇章名稱
+      const targetSub = (appState.subjects || []).find(s => s.name === task.subject);
+      if (targetSub && Array.isArray(targetSub.chapters)) {
+        if (targetSub.chapters.includes(newChapTitle)) {
+          return { status: 'unchanged', oldSubject: task.subject, oldChapter: newChapTitle, newChapter: newChapTitle };
+        }
+
+        // 若為舊資料微調：尋找同科目、同日期標籤下，未被其他現存作業佔用且文字高度相似的篇章
+        const activeTextsOnDate = new Set(
+          (appState.dailyTasks || [])
+            .filter(t => (t.date || getTodayDateKey()) === assignDate && t.visible && t.text)
+            .map(t => t.text.trim())
+        );
+        const linkedChapters = new Set(
+          Object.values(appState.taskChapterLinks || {}).map(l => `${l.subject}::${l.chapter}`)
+        );
+
+        const candidate = targetSub.chapters.find(c => {
+          if (!c.startsWith(`${dateTag} `)) return false;
+          if (linkedChapters.has(`${task.subject}::${c}`)) return false;
+          const oldPureText = c.slice(dateTag.length).trim();
+          if (activeTextsOnDate.has(oldPureText)) return false;
+          // 檢查前綴或部分文字重疊（微調字元或頁碼時）
+          const minLen = Math.min(oldPureText.length, task.text.length);
+          let commonPrefix = 0;
+          while (commonPrefix < minLen && oldPureText[commonPrefix] === task.text[commonPrefix]) {
+            commonPrefix++;
+          }
+          return commonPrefix >= 2 || oldPureText.includes(task.text) || task.text.includes(oldPureText);
+        });
+
+        if (candidate) {
+          return { status: 'update', oldSubject: task.subject, oldChapter: candidate, newChapter: newChapTitle };
+        }
+      }
+
+      return { status: 'create', oldSubject: null, oldChapter: null, newChapter: newChapTitle };
     }
 
     function updateGradingDateTasks(preserveTaskId = '') {
@@ -2854,6 +2925,18 @@
             showConfirmModal(`確定刪除篇章【${targetChap}】？`, '刪除後相關歷練紀錄與所得修為將自動扣除。', () => {
               currentSub.chapters.splice(foundIdx, 1);
 
+              if (appState.chapterMeta) {
+                delete appState.chapterMeta[targetChap];
+              }
+              if (appState.taskChapterLinks) {
+                Object.keys(appState.taskChapterLinks).forEach(k => {
+                  const lk = appState.taskChapterLinks[k];
+                  if (lk && lk.subject === currentSub.name && lk.chapter === targetChap) {
+                    delete appState.taskChapterLinks[k];
+                  }
+                });
+              }
+
               const removedRecs = (appState.records || []).filter(r => r.subject === currentSub.name && r.chapter === targetChap);
               removedRecs.forEach(rec => {
                 const st = (appState.students || []).find(s => s.id === rec.studentId);
@@ -2890,6 +2973,19 @@
                     r.chapter = freshName;
                   }
                 });
+
+                if (appState.chapterMeta && appState.chapterMeta[oldChap]) {
+                  appState.chapterMeta[freshName] = appState.chapterMeta[oldChap];
+                  delete appState.chapterMeta[oldChap];
+                }
+                if (appState.taskChapterLinks) {
+                  Object.keys(appState.taskChapterLinks).forEach(k => {
+                    const lk = appState.taskChapterLinks[k];
+                    if (lk && lk.subject === currentSub.name && lk.chapter === oldChap) {
+                      lk.chapter = freshName;
+                    }
+                  });
+                }
 
                 persistState();
                 renderModalChapterBadges(currentSub);
@@ -3147,6 +3243,9 @@
             appState.dailyNotices = imported.dailyNotices || [];
             appState.morningRecords = imported.morningRecords || {};
             appState.records = imported.records || [];
+            appState.homeworkCheckDateMap = imported.homeworkCheckDateMap || {};
+            appState.chapterMeta = imported.chapterMeta || {};
+            appState.taskChapterLinks = imported.taskChapterLinks || {};
             if (imported.wanXiangStartDate !== undefined) appState.wanXiangStartDate = imported.wanXiangStartDate;
             if (imported.currentFont) appState.currentFont = imported.currentFont;
             if (imported.currentSize) appState.currentSize = imported.currentSize;
@@ -3449,17 +3548,18 @@
 
           if (rows.length > 0) {
             rows.forEach(r => {
+              const id = r.getAttribute('data-task-id');
               const visible = r.querySelector('.task-visible-chk')?.checked ?? false;
               const subject = r.querySelector('.task-subject-sel')?.value || '國語';
               const text = (r.querySelector('.task-text-inp')?.value || '').trim();
               if (visible && text) {
-                targetTasks.push({ subject, text });
+                targetTasks.push({ id, subject, text });
               }
             });
           } else {
             targetTasks = (appState.dailyTasks || [])
               .filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim())
-              .map(t => ({ subject: t.subject, text: t.text.trim() }));
+              .map(t => ({ id: t.id, subject: t.subject, text: t.text.trim() }));
           }
 
           if (targetTasks.length === 0) {
@@ -3476,13 +3576,25 @@
           document.getElementById('transfer-target-check-date').value = defaultTargetDate;
 
           const previewList = document.getElementById('transfer-tasks-preview-list');
-          previewList.innerHTML = targetTasks.map((t, idx) => `
-            <div class="flex items-center space-x-2 py-1 px-1.5 rounded bg-amber-50 border border-amber-200">
-              <span class="w-5 h-5 rounded-full bg-amber-200 text-stone-800 flex items-center justify-center font-bold text-[11px]">${idx + 1}</span>
-              <span class="font-bold text-amber-900">[${t.subject}]</span>
-              <span class="text-stone-800 truncate">${t.text}</span>
-            </div>
-          `).join('');
+          previewList.innerHTML = targetTasks.map((t, idx) => {
+            const match = findExistingTransferredChapter(t, selectedDateKey);
+            let statusBadge = '';
+            if (match.status === 'update') {
+              statusBadge = `<span class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-950 border border-amber-400 shrink-0" title="原篇章：${match.oldChapter}">🔄 自動更新原篇章</span>`;
+            } else if (match.status === 'unchanged') {
+              statusBadge = `<span class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-500 border border-stone-300 shrink-0">已存在</span>`;
+            } else {
+              statusBadge = `<span class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">✨ 新增篇章</span>`;
+            }
+            return `
+              <div class="flex items-center space-x-2 py-1 px-1.5 rounded bg-amber-50 border border-amber-200">
+                <span class="w-5 h-5 rounded-full bg-amber-200 text-stone-800 flex items-center justify-center font-bold text-[11px] shrink-0">${idx + 1}</span>
+                <span class="font-bold text-amber-900 shrink-0">[${t.subject}]</span>
+                <span class="text-stone-800 truncate">${t.text}</span>
+                ${statusBadge}
+              </div>
+            `;
+          }).join('');
 
           modal.classList.remove('hidden');
         });
@@ -3506,42 +3618,90 @@
         let targetTasks = [];
         if (rows.length > 0) {
           rows.forEach(r => {
+            const id = r.getAttribute('data-task-id');
             const visible = r.querySelector('.task-visible-chk')?.checked ?? false;
             const subject = r.querySelector('.task-subject-sel')?.value || '國語';
             const text = (r.querySelector('.task-text-inp')?.value || '').trim();
             if (visible && text) {
-              targetTasks.push({ subject, text });
+              targetTasks.push({ id, subject, text });
             }
           });
         } else {
           targetTasks = (appState.dailyTasks || [])
             .filter(t => (t.date || getTodayDateKey()) === selectedDateKey && t.visible && t.text && t.text.trim())
-            .map(t => ({ subject: t.subject, text: t.text.trim() }));
+            .map(t => ({ id: t.id, subject: t.subject, text: t.text.trim() }));
         }
 
-        const dObj = new Date(selectedDateKey);
-        const dateTag = `[${dObj.getMonth() + 1}/${dObj.getDate()}]`;
-        let count = 0;
+        let createdCount = 0;
+        let updatedCount = 0;
 
         if (!appState.homeworkCheckDateMap) appState.homeworkCheckDateMap = {};
         appState.homeworkCheckDateMap[chosenCheckDate] = selectedDateKey;
 
         if (!appState.chapterMeta) appState.chapterMeta = {};
+        if (!appState.taskChapterLinks) appState.taskChapterLinks = {};
 
         targetTasks.forEach(task => {
+          const match = findExistingTransferredChapter(task, selectedDateKey);
+          const chapTitle = match.newChapter;
+
           let targetSub = (appState.subjects || []).find(s => s.name === task.subject);
           if (!targetSub) {
-            targetSub = { id: 'sub_' + Date.now(), name: task.subject, icon: '📚', chapters: [] };
+            targetSub = { id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5), name: task.subject, icon: '📚', chapters: [] };
             appState.subjects.push(targetSub);
           }
-          const chapTitle = `${dateTag} ${task.text}`;
-          if (!targetSub.chapters.includes(chapTitle)) {
-            targetSub.chapters.push(chapTitle);
-            count++;
+          if (!targetSub.chapters) targetSub.chapters = [];
+
+          if (match.status === 'update') {
+            const oldSub = (appState.subjects || []).find(s => s.name === match.oldSubject);
+            if (oldSub && oldSub.name === targetSub.name) {
+              const oldIdx = oldSub.chapters.indexOf(match.oldChapter);
+              if (oldIdx !== -1) {
+                if (oldSub.chapters.includes(chapTitle) && chapTitle !== match.oldChapter) {
+                  oldSub.chapters.splice(oldIdx, 1);
+                } else {
+                  oldSub.chapters[oldIdx] = chapTitle;
+                }
+              } else if (!targetSub.chapters.includes(chapTitle)) {
+                targetSub.chapters.push(chapTitle);
+              }
+            } else {
+              if (oldSub && Array.isArray(oldSub.chapters)) {
+                const oldIdx = oldSub.chapters.indexOf(match.oldChapter);
+                if (oldIdx !== -1) oldSub.chapters.splice(oldIdx, 1);
+              }
+              if (!targetSub.chapters.includes(chapTitle)) {
+                targetSub.chapters.push(chapTitle);
+              }
+            }
+
+            // 同步更新已存在之批閱卷宗與篇章檢核中繼資料
+            (appState.records || []).forEach(r => {
+              if (r.subject === match.oldSubject && r.chapter === match.oldChapter) {
+                r.subject = task.subject;
+                r.chapter = chapTitle;
+              }
+            });
+            if (appState.chapterMeta[match.oldChapter]) {
+              delete appState.chapterMeta[match.oldChapter];
+            }
+            updatedCount++;
+          } else if (match.status === 'create') {
+            if (!targetSub.chapters.includes(chapTitle)) {
+              targetSub.chapters.push(chapTitle);
+              createdCount++;
+            }
           }
+
           appState.chapterMeta[chapTitle] = {
             checkDate: chosenCheckDate,
             assignDate: selectedDateKey
+          };
+          appState.taskChapterLinks[`${selectedDateKey}__${task.id}`] = {
+            subject: task.subject,
+            chapter: chapTitle,
+            assignDate: selectedDateKey,
+            taskId: task.id
           };
         });
 
@@ -3550,7 +3710,12 @@
         renderSubjectsView();
         renderGradingView();
         renderMorningCheck();
-        showToast(`已排定於 ${chosenCheckDate} 課業繳驗錄中核對，並轉入 ${count} 篇章！`);
+
+        let msgParts = [`已排定於 ${chosenCheckDate} 核對`];
+        if (createdCount > 0) msgParts.push(`新增 ${createdCount} 篇章`);
+        if (updatedCount > 0) msgParts.push(`自動更新 ${updatedCount} 篇原篇章名稱`);
+        if (createdCount === 0 && updatedCount === 0) msgParts.push(`所有篇章皆已同步`);
+        showToast(msgParts.join('，') + '！');
       });
 
       document.getElementById('morning-all-submit-btn').addEventListener('click', () => {
@@ -3610,11 +3775,7 @@
             const sub = (appState.subjects || []).find(s => s.name === task.subject);
             if (!sub) return;
 
-            let matchedChapter = (sub.chapters || []).find(c => c.includes(simName) || task.text.includes(c));
-            if (!matchedChapter) {
-              matchedChapter = `[${effectiveData.date.slice(5)}] ${task.text}`;
-              sub.chapters.push(matchedChapter);
-            }
+            const matchedChapter = resolveTaskChapterName(task.subject, task.text, effectiveData.date);
 
             (appState.students || []).forEach(st => {
               const status = dayRecords[st.id]?.[simName] || 'none';
